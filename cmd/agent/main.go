@@ -12,14 +12,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/coolleng2525/hubterm/internal/agent/connector"
+	"github.com/coolleng2525/hubterm/internal/agent/executor"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
+	"github.com/coolleng2525/hubterm/internal/agent/service"
+	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
 )
 
+// NodeConfig 节点本地配置
 type NodeConfig struct {
 	NodeID string `json:"node_id"`
 	Token  string `json:"token,omitempty"`
 }
 
+// loadOrCreateConfig 加载或创建节点配置
 func loadOrCreateConfig(dataDir string) *NodeConfig {
 	configPath := filepath.Join(dataDir, "node.json")
 	cfg := &NodeConfig{}
@@ -37,17 +43,35 @@ func loadOrCreateConfig(dataDir string) *NodeConfig {
 	return cfg
 }
 
+// saveConfig 保存节点配置到磁盘
 func saveConfig(dataDir string, cfg *NodeConfig) {
 	configPath := filepath.Join(dataDir, "node.json")
 	data, _ := json.Marshal(cfg)
 	os.WriteFile(configPath, data, 0644)
 }
 
+// installService 安装为系统服务
+func installService(execPath string) {
+	log.Printf("Installing system service: hubterm-agent")
+	if err := service.Install("hubterm-agent", "HubTerm Node Agent", execPath); err != nil {
+		log.Fatalf("Failed to install service: %v", err)
+	}
+	log.Printf("Service installed successfully")
+}
+
 func main() {
 	centerURL := flag.String("center", "http://localhost:8080", "Center service URL")
 	nodeName := flag.String("name", "", "Node display name (default: hostname)")
 	dataDir := flag.String("data", "./data", "Data directory for node config")
+	installFlag := flag.Bool("install", false, "Install as system service")
 	flag.Parse()
+
+	// 安装模式
+	if *installFlag {
+		execPath, _ := os.Executable()
+		installService(execPath)
+		return
+	}
 
 	cfg := loadOrCreateConfig(*dataDir)
 
@@ -58,30 +82,82 @@ func main() {
 
 	log.Printf("Agent starting: node_id=%s center=%s name=%s", cfg.NodeID, *centerURL, *nodeName)
 
+	// 创建上报器
 	rep := reporter.NewReporter(*centerURL, cfg.NodeID, *nodeName)
 	if cfg.Token != "" {
 		rep.SetNodeToken(cfg.Token)
 		log.Printf("Loaded saved node token")
 	}
 
-	// first report immediately
+	// 首次立即上报
 	if err := rep.Report(); err != nil {
 		log.Printf("Initial report error: %v", err)
 	}
 
-	// Save token if received from first report
+	// 保存从首次上报获取的 token
 	if rep.NodeToken != "" && rep.NodeToken != cfg.Token {
 		cfg.Token = rep.NodeToken
 		saveConfig(*dataDir, cfg)
 		log.Printf("Node token saved to disk")
 	}
 
-	// then report every 3 seconds
+	// 定期上报 (每 3 秒)
 	go rep.Start(3 * time.Second)
 
-	// wait for signal
+	// 建立 WebSocket 连接
+	conn := connector.New(*centerURL, cfg.NodeID, cfg.Token)
+
+	// 注册命令处理器
+	conn.SetCommandHandler(func(cmd *connector.CenterCommand) {
+		log.Printf("Received command: id=%s type=%s command=%s",
+			cmd.ID, cmd.Type, cmd.Payload.Command)
+
+		switch cmd.Type {
+		case "exec":
+			timeout := time.Duration(cmd.Payload.Timeout) * time.Second
+			if timeout <= 0 {
+				timeout = 30 * time.Second // 默认 30 秒超时
+			}
+			result, err := executor.Execute(cmd.Payload.Command, timeout)
+			if err != nil {
+				log.Printf("Execute error: %v", err)
+				_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{
+					CmdID:    cmd.ID,
+					Stdout:   "",
+					Stderr:   err.Error(),
+					ExitCode: -1,
+					Duration: 0,
+				})
+				return
+			}
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{
+				CmdID:    cmd.ID,
+				Stdout:   result.Stdout,
+				Stderr:   result.Stderr,
+				ExitCode: result.ExitCode,
+				Duration: result.Duration,
+			})
+			log.Printf("Command completed: id=%s exit_code=%d duration=%dms",
+				cmd.ID, result.ExitCode, result.Duration)
+
+		case "ping":
+			_ = conn.SendReport(map[string]string{
+				"type":    "pong",
+				"node_id": cfg.NodeID,
+			})
+
+		default:
+			log.Printf("Unknown command type: %s", cmd.Type)
+		}
+	})
+
+	// 启动 WebSocket 连接
+	go conn.Connect()
+
+	// 等待退出信号
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigCh
 	fmt.Printf("\nReceived signal %v, shutting down...\n", sig)
+	conn.Close()
 }

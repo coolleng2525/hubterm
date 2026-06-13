@@ -279,3 +279,80 @@ func (h *NodeHandler) GetPendingCommands(c *gin.Context) {
 	// simplified: return empty list
 	c.JSON(http.StatusOK, gin.H{"commands": []hubtermproto.CommandRequest{}})
 }
+
+// ExecCommand 向节点下发命令 (POST /api/nodes/:id/exec)
+// Request: {"command": "ls -la", "timeout": 30}
+// Response: {"cmd_id": "uuid", "status": "pending"}
+func (h *NodeHandler) ExecCommand(c *gin.Context) {
+	id := c.Param("id")
+	var req hubtermproto.ExecRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 获取 agent WS handler
+	agentWS, ok := c.Get("agent_ws_handler")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "agent WS handler not available"})
+		return
+	}
+	awh := agentWS.(*AgentWSHandler)
+
+	if !awh.IsNodeConnected(id) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "node not connected"})
+		return
+	}
+
+	timeout := req.Timeout
+	if timeout <= 0 {
+		timeout = 30
+	}
+
+	cmdID, err := awh.SendExecCommand(id, req.Command, timeout)
+	if err != nil {
+		nodeLog.Error("failed to send exec command", log.Err(err), log.String("node_id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 记录审计日志
+	username, _ := c.Get("username")
+	if err := model.GetDB().Create(&model.AuditLog{
+		User:   username.(string),
+		Action: "exec_command",
+		Target: id,
+		Detail: req.Command,
+	}).Error; err != nil {
+		nodeLog.Error("failed to create audit log", log.Err(err))
+	}
+
+	nodeLog.Info("exec command sent",
+		log.String("username", username.(string)),
+		log.String("node_id", id),
+		log.String("cmd_id", cmdID),
+		log.String("command", req.Command),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"cmd_id": cmdID,
+		"status": "pending",
+	})
+}
+
+// GetExecResult 查询命令执行结果 (GET /api/nodes/:id/exec/:cmd_id)
+// Response: {"status": "completed", "result": {"stdout": "...", "stderr": "...", "exit_code": 0}}
+func (h *NodeHandler) GetExecResult(c *gin.Context) {
+	cmdID := c.Param("cmd_id")
+
+	entry := GetExecResult(cmdID)
+	if entry == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "command not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": entry.Status,
+		"result": entry.Result,
+	})
+}

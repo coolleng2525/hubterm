@@ -82,6 +82,7 @@ func main() {
 	portH := &handler.SerialPortHandler{DB: model.GetDB()}
 	sessionH := &handler.SessionHandler{DB: model.GetDB()}
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
+	agentWSH := handler.NewAgentWSHandler(model.GetDB())
 
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
@@ -100,6 +101,11 @@ func main() {
 		api.GET("/nodes", nodeH.List)
 		api.GET("/nodes/:id", nodeH.Get)
 		api.POST("/nodes/:id/command", nodeH.Command)
+		api.POST("/nodes/:id/exec", func(c *gin.Context) {
+			c.Set("agent_ws_handler", agentWSH)
+			nodeH.ExecCommand(c)
+		})
+		api.GET("/nodes/:id/exec/:cmd_id", nodeH.GetExecResult)
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
 
 		api.GET("/serial-ports", portH.List)
@@ -111,9 +117,14 @@ func main() {
 		api.GET("/audit-logs", auditH.List)
 	}
 
-	// WebSocket
+	// WebSocket — browser clients
 	r.GET("/api/ws", func(c *gin.Context) {
 		handler.HandleWS(c.Request, c.Writer)
+	})
+
+	// WebSocket — agent connections
+	r.GET("/api/ws/agent", func(c *gin.Context) {
+		agentWSH.HandleAgentWS(c.Writer, c.Request)
 	})
 
 	// Health check

@@ -56,3 +56,40 @@ type WSMessage struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
 }
+
+// ExecCommand 中心下发的命令执行请求
+type ExecCommand struct {
+	ID      string `json:"id"`
+	Type    string `json:"type"`    // exec / shell / ping / restart
+	Payload struct {
+		Command string `json:"command,omitempty"`
+		Timeout int    `json:"timeout,omitempty"` // 秒
+	} `json:"payload,omitempty"`
+}
+
+// ExecResult 命令执行结果
+type ExecResult struct {
+	CmdID    string `json:"cmd_id"`
+	Stdout   string `json:"stdout"`
+	Stderr   string `json:"stderr"`
+	ExitCode int    `json:"exit_code"`
+	Duration int64  `json:"duration_ms"`
+}
+
+// ExecResponse 中心返回给节点的执行结果确认
+type ExecResponse struct {
+	CmdID  string `json:"cmd_id"`
+	Status string `json:"status"` // pending / running / completed / failed
+	Result *ExecResult `json:"result,omitempty"`
+}
+
+// ExecRequest API 请求体 — 向节点下发命令
+type ExecRequest struct {
+	Command string `json:"command"`
+	Timeout int    `json:"timeout,omitempty"` // 秒，默认 30
+}
+
+// ExecStatusQuery 查询命令执行状态
+type ExecStatusQuery struct {
+	CmdID string `json:"cmd_id"`
+}
