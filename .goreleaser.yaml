@@ -41,6 +41,7 @@ archives:
     files:
       - README.md
       - web/dist/**/*
+      - tabby-hubterm-plugin/tabby-hubterm-*.tgz
 
 checksum:
   name_template: 'checksums.txt'
