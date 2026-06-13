@@ -118,3 +118,17 @@ type ExecRequest struct {
 type ExecStatusQuery struct {
 	CmdID string `json:"cmd_id"`
 }
+
+// RegisterMessage 节点注册消息，agent 连接时发送给中心
+// 包含节点标识信息和自发现域名。
+type RegisterMessage struct {
+	// NodeID 节点唯一标识
+	NodeID string `json:"node_id"`
+	// NodeName 节点显示名称
+	NodeName string `json:"node_name"`
+	// Token 节点认证令牌
+	Token string `json:"token"`
+	// Domain 自发现域名，agent 通过 --domain 指定
+	// 中心可用此字段将节点分组到对应域下
+	Domain string `json:"domain,omitempty"`
+}

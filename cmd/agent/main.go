@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/coolleng2525/hubterm/internal/agent/connector"
+	"github.com/coolleng2525/hubterm/internal/agent/discovery"
 	"github.com/coolleng2525/hubterm/internal/agent/executor"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
 	"github.com/coolleng2525/hubterm/internal/agent/service"
@@ -60,10 +61,11 @@ func installService(execPath string) {
 }
 
 func main() {
-	centerURL := flag.String("center", "http://localhost:8080", "Center service URL")
+	centerURL := flag.String("center", "", "Center service URL (e.g. http://localhost:8080)")
 	nodeName := flag.String("name", "", "Node display name (default: hostname)")
 	dataDir := flag.String("data", "./data", "Data directory for node config")
 	installFlag := flag.Bool("install", false, "Install as system service")
+	domain := flag.String("domain", "", "Auto-discovery domain (e.g. mycompany.com)")
 	flag.Parse()
 
 	// 安装模式
@@ -73,6 +75,31 @@ func main() {
 		return
 	}
 
+	// 确定中心地址（优先级：--center > --domain 自发现 > 环境变量）
+	centerAddr := *centerURL
+	if centerAddr == "" {
+		if *domain != "" {
+			log.Printf("Discovering center via domain: %s", *domain)
+			result, err := discovery.Discover(*domain)
+			if err != nil {
+				log.Fatalf("Auto-discovery failed for domain %q: %v", *domain, err)
+			}
+			centerAddr = result.CenterURL
+			log.Printf("Discovered center at %s (method: %s)", centerAddr, result.Method)
+		} else if envURL := os.Getenv("HUBTERM_CENTER_URL"); envURL != "" {
+			centerAddr = envURL
+			log.Printf("Using center URL from HUBTERM_CENTER_URL: %s", centerAddr)
+		} else {
+			fmt.Println("Error: no center URL specified.")
+			fmt.Println("Provide one of:")
+			fmt.Println("  --center <url>         Center service URL directly")
+			fmt.Println("  --domain <domain>      Auto-discover center via DNS/mDNS")
+			fmt.Println("  HUBTERM_CENTER_URL     Environment variable")
+			flag.Usage()
+			os.Exit(1)
+		}
+	}
+
 	cfg := loadOrCreateConfig(*dataDir)
 
 	if *nodeName == "" {
@@ -80,10 +107,10 @@ func main() {
 		*nodeName = hostname
 	}
 
-	log.Printf("Agent starting: node_id=%s center=%s name=%s", cfg.NodeID, *centerURL, *nodeName)
+	log.Printf("Agent starting: node_id=%s center=%s name=%s", cfg.NodeID, centerAddr, *nodeName)
 
 	// 创建上报器
-	rep := reporter.NewReporter(*centerURL, cfg.NodeID, *nodeName)
+	rep := reporter.NewReporter(centerAddr, cfg.NodeID, *nodeName)
 	if cfg.Token != "" {
 		rep.SetNodeToken(cfg.Token)
 		log.Printf("Loaded saved node token")
@@ -105,7 +132,7 @@ func main() {
 	go rep.Start(3 * time.Second)
 
 	// 建立 WebSocket 连接
-	conn := connector.New(*centerURL, cfg.NodeID, cfg.Token)
+	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
 
 	// 注册命令处理器
 	conn.SetCommandHandler(func(cmd *connector.CenterCommand) {
