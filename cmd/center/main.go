@@ -85,6 +85,8 @@ func main() {
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
 	agentWSH := handler.NewAgentWSHandler(model.GetDB())
 	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
+	deviceSvc := service.NewDeviceService(model.GetDB())
+	aiH := handler.NewAIHandler(model.GetDB(), deviceSvc, agentWSH)
 
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
@@ -125,6 +127,17 @@ func main() {
 		api.GET("/scripts/:id", scriptH.Get)
 		api.DELETE("/scripts/:id", scriptH.Delete)
 		api.GET("/scripts/:id/results", scriptH.Results)
+
+		// AI-friendly API v1 routes
+		v1 := api.Group("/v1")
+		{
+			v1.GET("/devices", aiH.Discover)
+			v1.GET("/devices/:id", aiH.GetDevice)
+			v1.GET("/devices/:id/capabilities", aiH.GetCapabilities)
+			v1.POST("/devices/:id/exec", aiH.Execute)
+			v1.GET("/devices/:id/exec/:cmd_id", aiH.GetResult)
+			v1.POST("/scripts", aiH.UploadAndExecute)
+		}
 	}
 
 	// WebSocket — browser clients
