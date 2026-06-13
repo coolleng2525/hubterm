@@ -11,6 +11,7 @@ import (
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/center/service"
 	"github.com/coolleng2525/hubterm/internal/pkg/config"
+	"github.com/coolleng2525/hubterm/internal/pkg/script"
 	"github.com/coolleng2525/hubterm/internal/pkg/health"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
 )
@@ -83,6 +84,7 @@ func main() {
 	sessionH := &handler.SessionHandler{DB: model.GetDB()}
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
 	agentWSH := handler.NewAgentWSHandler(model.GetDB())
+	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
 
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
@@ -115,6 +117,14 @@ func main() {
 		api.POST("/sessions/:id/assign-master", sessionH.AssignMaster)
 
 		api.GET("/audit-logs", auditH.List)
+
+		api.POST("/scripts", scriptH.Create)
+		api.POST("/scripts/:id/execute", scriptH.Execute)
+		api.POST("/scripts/:id/execute-on-node/:node_id", scriptH.ExecuteOnNode)
+		api.GET("/scripts", scriptH.List)
+		api.GET("/scripts/:id", scriptH.Get)
+		api.DELETE("/scripts/:id", scriptH.Delete)
+		api.GET("/scripts/:id/results", scriptH.Results)
 	}
 
 	// WebSocket — browser clients

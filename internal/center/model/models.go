@@ -79,5 +79,5 @@ type AuditLog struct {
 
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{})
+	return db.AutoMigrate(&User{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{}, &Script{}, &ScriptResult{})
 }
