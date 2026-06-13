@@ -59,8 +59,37 @@ func (r *Reporter) Report() error {
 		MemoryPercent: sysInfo.MemoryPercent,
 		DiskTotal:     sysInfo.DiskTotal,
 		DiskUsed:      sysInfo.DiskUsed,
+		Interfaces:    make([]hubtermproto.NetworkInterfaceInfo, 0),
 		SerialPorts:   make([]hubtermproto.SerialPortInfo, len(ports)),
 		Sessions:      []hubtermproto.SessionInfo{},
+	}
+
+	// ser2net 检测
+	if s := collector.DetectSer2net(); s != nil {
+		report.Ser2net = &hubtermproto.Ser2netStatus{
+			Installed:  s.Installed,
+			Running:    s.Running,
+			Version:    s.Version,
+			ConfigPath: s.ConfigPath,
+			Ports:      make([]hubtermproto.Ser2netPort, len(s.Ports)),
+		}
+		for i, p := range s.Ports {
+			report.Ser2net.Ports[i] = hubtermproto.Ser2netPort{
+				TCPPort:  p.TCPPort,
+				Device:   p.Device,
+				BaudRate: p.BaudRate,
+				Enabled:  p.Enabled,
+			}
+		}
+	}
+
+	// 采集所有网卡
+	ifaces := collector.GetAllInterfaces()
+	for _, iface := range ifaces {
+		report.Interfaces = append(report.Interfaces, hubtermproto.NetworkInterfaceInfo{
+			Name: iface.Name,
+			IP:   iface.IP,
+		})
 	}
 
 	for i, p := range ports {

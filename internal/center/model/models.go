@@ -26,15 +26,16 @@ type Node struct {
 	OS            string    `gorm:"size:64" json:"os"`
 	OSVersion     string    `gorm:"size:128" json:"os_version"`
 	Arch          string    `gorm:"size:32" json:"arch"`
-	Status        string    `gorm:"size:32;not null;default:offline" json:"status"` // online/offline
+	Status        string    `gorm:"size:32;not null;default:offline" json:"status"`
 	CPUPercent    float64   `json:"cpu_percent"`
 	MemoryTotal   uint64    `json:"memory_total"`
 	MemoryUsed    uint64    `json:"memory_used"`
 	MemoryPercent float64   `json:"memory_percent"`
 	DiskTotal     uint64    `json:"disk_total"`
 	DiskUsed      uint64    `json:"disk_used"`
+	Interfaces    string    `gorm:"size:1024" json:"interfaces"` // JSON: [{"name":"eth0","ip":"192.168.1.55"}]
 	LastSeen      time.Time `json:"last_seen"`
-	Token         string    `gorm:"size:128" json:"-"` // FIXED: node auth token
+	Token         string    `gorm:"size:128" json:"-"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

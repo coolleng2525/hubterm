@@ -8,8 +8,6 @@ import { SettingsTabProvider } from 'tabby-settings'
 import { HubTermConfigProvider } from './configProvider'
 import { HubTermDecorator } from './terminalDecorator'
 import { HubTermService } from './hubterm.service'
-import { HubTermSettingsTabProvider } from './settingsTabProvider'
-import { HubTermSettingsTabComponent } from './settingsTab.component'
 
 @NgModule({
     imports: [
@@ -20,14 +18,7 @@ import { HubTermSettingsTabComponent } from './settingsTab.component'
     providers: [
         HubTermService,
         { provide: ConfigProvider, useClass: HubTermConfigProvider, multi: true },
-        { provide: SettingsTabProvider, useClass: HubTermSettingsTabProvider, multi: true },
         { provide: TerminalDecorator, useClass: HubTermDecorator, multi: true },
-    ],
-    entryComponents: [
-        HubTermSettingsTabComponent,
-    ],
-    declarations: [
-        HubTermSettingsTabComponent,
     ],
 })
 export default class HubTermModule { }

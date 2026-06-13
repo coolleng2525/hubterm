@@ -1,23 +1,48 @@
 // FIXED: renamed from proto to hubtermproto to avoid generic package name
 package hubtermproto
 
+// NetworkInterfaceInfo 网络接口信息
+type NetworkInterfaceInfo struct {
+	Name string `json:"name"`
+	IP   string `json:"ip"`
+}
+
 // NodeReport 节点上报数据
 type NodeReport struct {
-	NodeID   string       `json:"node_id"`
-	Name     string       `json:"name"`
-	IP       string       `json:"ip"`
-	Hostname string       `json:"hostname"`
-	OS       string       `json:"os"`
-	OSVersion string      `json:"os_version"`
-	Arch     string       `json:"arch"`
-	CPUPercent float64    `json:"cpu_percent"`
-	MemoryTotal uint64    `json:"memory_total"`
-	MemoryUsed  uint64    `json:"memory_used"`
-	MemoryPercent float64 `json:"memory_percent"`
-	DiskTotal   uint64    `json:"disk_total"`
-	DiskUsed    uint64    `json:"disk_used"`
-	SerialPorts []SerialPortInfo `json:"serial_ports"`
-	Sessions   []SessionInfo    `json:"sessions"`
+	NodeID      string                `json:"node_id"`
+	Name        string                `json:"name"`
+	IP          string                `json:"ip"`
+	Hostname    string                `json:"hostname"`
+	OS          string                `json:"os"`
+	OSVersion   string                `json:"os_version"`
+	Arch        string                `json:"arch"`
+	CPUPercent  float64               `json:"cpu_percent"`
+	MemoryTotal uint64                `json:"memory_total"`
+	MemoryUsed  uint64                `json:"memory_used"`
+	MemoryPercent float64             `json:"memory_percent"`
+	DiskTotal   uint64                `json:"disk_total"`
+	DiskUsed    uint64                `json:"disk_used"`
+	Interfaces  []NetworkInterfaceInfo `json:"interfaces"`
+	SerialPorts []SerialPortInfo      `json:"serial_ports"`
+	Sessions    []SessionInfo         `json:"sessions"`
+	Ser2net     *Ser2netStatus        `json:"ser2net,omitempty"`
+}
+
+// Ser2netStatus ser2net 安装和运行状态
+type Ser2netStatus struct {
+	Installed  bool          `json:"installed"`
+	Running    bool          `json:"running"`
+	Version    string        `json:"version"`
+	ConfigPath string        `json:"config_path"`
+	Ports      []Ser2netPort `json:"ports"`
+}
+
+// Ser2netPort ser2net 配置中定义的串口映射
+type Ser2netPort struct {
+	TCPPort  int    `json:"tcp_port"`
+	Device   string `json:"device"`
+	BaudRate int    `json:"baud_rate"`
+	Enabled  bool   `json:"enabled"`
 }
 
 // SerialPortInfo 串口信息

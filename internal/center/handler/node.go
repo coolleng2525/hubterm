@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -146,6 +147,13 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	node.MemoryPercent = report.MemoryPercent
 	node.DiskTotal = report.DiskTotal
 	node.DiskUsed = report.DiskUsed
+
+	// 序列化网卡信息
+	if len(report.Interfaces) > 0 {
+		ifaceJSON, _ := json.Marshal(report.Interfaces)
+		node.Interfaces = string(ifaceJSON)
+	}
+
 	node.Status = "online"
 	node.LastSeen = now
 	node.UpdatedAt = now

@@ -19,15 +19,17 @@ export class HubTermDecorator extends TerminalDecorator {
 
         // Hook terminal output: forward to HubTerm
         if (tab.output$) {
-            tab.output$.subscribe(data => {
-                this.hubterm.sendTerminalData(tab, data)
+            tab.output$.subscribe((data: any) => {
+                const str = typeof data === 'string' ? data : String(data)
+                this.hubterm.sendTerminalData(tab, str)
             })
         }
 
         // Hook terminal input: forward to HubTerm
         if (tab.input$) {
-            tab.input$.subscribe(data => {
-                this.hubterm.sendTerminalData(tab, data)
+            tab.input$.subscribe((data: any) => {
+                const str = typeof data === 'string' ? data : String(data)
+                this.hubterm.sendTerminalData(tab, str)
             })
         }
     }

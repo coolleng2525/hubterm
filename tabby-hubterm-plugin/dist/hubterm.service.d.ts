@@ -1,0 +1,31 @@
+import { Injector, NgZone } from '@angular/core';
+import { BaseTerminalTabComponent } from 'tabby-terminal';
+export declare class HubTermService {
+    private injector;
+    private zone;
+    private ws;
+    private reportTimer;
+    private reconnectTimer;
+    private reconnectDelay;
+    private nodeId;
+    private attachedTabs;
+    private stopping;
+    private get config();
+    private get hostApp();
+    constructor(injector: Injector, zone: NgZone);
+    private loadNodeId;
+    private generateId;
+    start(): void;
+    stop(): void;
+    attachTab(tab: BaseTerminalTabComponent): void;
+    detachTab(tab: BaseTerminalTabComponent): void;
+    sendTerminalData(tab: BaseTerminalTabComponent, data: string): void;
+    writeToTab(tab: BaseTerminalTabComponent, data: string): void;
+    private connect;
+    private scheduleReconnect;
+    private register;
+    private startReporting;
+    private sendReport;
+    private collectSessions;
+    private handleCommand;
+}

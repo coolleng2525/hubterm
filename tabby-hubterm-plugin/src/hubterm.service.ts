@@ -242,7 +242,7 @@ export class HubTermService {
                     if (cmd.payload?.session_id) {
                         for (const [tab, _] of this.attachedTabs) {
                             if ((tab as any).sessionId === cmd.payload.session_id) {
-                                tab.close()
+                                (tab as any).close()
                                 break
                             }
                         }

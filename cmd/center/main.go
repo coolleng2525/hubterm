@@ -88,8 +88,8 @@ func main() {
 	r.POST("/api/auth/login", authH.Login)
 	r.POST("/api/auth/register", middleware.AuthRequired(), middleware.AdminRequired(), authH.Register)
 
-	// FIXED: node report routes protected by NodeTokenRequired
-	r.POST("/api/nodes/report", handler.NodeTokenRequired(model.GetDB()), nodeH.Report)
+	// node report routes — Report 自己处理首次注册（无 token 时自动生成）
+	r.POST("/api/nodes/report", nodeH.Report)
 	r.GET("/api/nodes/pending-commands", handler.NodeTokenRequired(model.GetDB()), nodeH.GetPendingCommands)
 
 	// authenticated routes
