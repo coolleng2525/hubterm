@@ -1,5 +1,7 @@
 # HubTerm - 串口/SSH 集群管控平台
 
+[English](README-en.md)
+
 基于 WindTerm 组件的串口/SSH 集群管控平台，采用**轻量集群方案**（节点上报+中心管理，不走流量中转）。
 
 ## 架构
@@ -118,3 +120,18 @@ hubterm/
 - **前端**: Vue 3 + Vite + Element Plus + xterm.js
 - **认证**: JWT
 - **节点通信**: HTTP REST + WebSocket
+
+## 参考与致谢
+
+HubTerm 站在巨人的肩膀上，参考/集成了以下开源项目：
+
+| 项目 | 用途 | 协议 |
+|------|------|------|
+| [Next Terminal](https://github.com/dushixiang/next-terminal) | 堡垒机架构参考：SSH 隧道/跳板机、会话观察者模式、WebSocket 终端协议、会话录制 | AGPL-3.0 |
+| [WindTerm](https://github.com/kingToolbox/WindTerm) | 终端底层（Pty/SSH/串口），已集成 HubTerm Agent | Apache-2.0 |
+| [Tabby](https://github.com/Eugeny/tabby) | 终端插件系统，已开发 tabby-hubterm 插件 | MIT |
+| [ser2net](https://sourceforge.net/projects/ser2net/) | 串口→TCP 映射（节点代理可选模式） | GPL-2.0 |
+| [Headscale](https://github.com/juanfont/headscale) | 自发现/自组网/加密隧道（规划中） | BSD-3-Clause |
+| [Tailscale](https://github.com/tailscale/tailscale) | 网状 VPN 架构参考（规划中） | BSD-3-Clause |
+
+> HubTerm 不是重新发明轮子，而是把轮子拼成一辆车——做现有项目做不到的事：AI 执行环境、脚本引擎、统一设备抽象。
