@@ -1,0 +1,75 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: hubterm-center
+    main: ./cmd/center
+    binary: hubterm-center
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+  - id: hubterm-agent
+    main: ./cmd/agent
+    binary: hubterm-agent
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats: ['tar.gz', 'zip']
+    files:
+      - README.md
+      - web/dist/**/*
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: '{{ .Tag }}-next'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  draft: false
+  prerelease: auto
+  header: |
+    ## HubTerm {{ .Version }}
+
+    ### 下载
+
+    | 平台 | 架构 | 文件 |
+    |------|------|------|
+    | Linux | amd64 | hubterm-center_linux_amd64.tar.gz |
+    | Linux | arm64 | hubterm-center_linux_arm64.tar.gz |
+    | macOS | amd64 | hubterm-center_darwin_amd64.tar.gz |
+    | macOS | arm64 | hubterm-center_darwin_arm64.tar.gz |
+    | Windows | amd64 | hubterm-center_windows_amd64.zip |

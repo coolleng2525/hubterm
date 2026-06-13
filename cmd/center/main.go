@@ -1,0 +1,119 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/coolleng2525/hubterm/internal/center/handler"
+	"github.com/coolleng2525/hubterm/internal/center/middleware"
+	"github.com/coolleng2525/hubterm/internal/center/model"
+	"github.com/coolleng2525/hubterm/internal/center/service"
+	"github.com/coolleng2525/hubterm/internal/pkg/health"
+	"github.com/coolleng2525/hubterm/internal/pkg/log"
+)
+
+var mainLog = log.New("center")
+
+func init() {
+	// Register health checks
+	health.Register("database", func() health.CheckResult {
+		db := model.GetDB()
+		if db == nil {
+			return health.CheckResult{Name: "database", Status: "down", Detail: "DB not initialized"}
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			return health.CheckResult{Name: "database", Status: "down", Detail: err.Error()}
+		}
+		if err := sqlDB.Ping(); err != nil {
+			return health.CheckResult{Name: "database", Status: "down", Detail: err.Error()}
+		}
+		return health.CheckResult{Name: "database", Status: "ok"}
+	})
+}
+
+func main() {
+	// init database
+	if err := model.InitDB("hubterm.db"); err != nil {
+		mainLog.Error("failed to init db", log.Err(err))
+		return
+	}
+
+	// ensure default admin
+	service.EnsureAdminExists()
+
+	r := gin.Default()
+
+	// CORS
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
+	// handlers
+	authH := &handler.AuthHandler{DB: model.GetDB()}
+	nodeH := &handler.NodeHandler{DB: model.GetDB()}
+	portH := &handler.SerialPortHandler{DB: model.GetDB()}
+	sessionH := &handler.SessionHandler{DB: model.GetDB()}
+	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
+
+	// public routes
+	r.POST("/api/auth/login", authH.Login)
+	r.POST("/api/auth/register", middleware.AuthRequired(), middleware.AdminRequired(), authH.Register)
+
+	// FIXED: node report routes protected by NodeTokenRequired
+	r.POST("/api/nodes/report", handler.NodeTokenRequired(model.GetDB()), nodeH.Report)
+	r.GET("/api/nodes/pending-commands", handler.NodeTokenRequired(model.GetDB()), nodeH.GetPendingCommands)
+
+	// authenticated routes
+	api := r.Group("/api", middleware.AuthRequired())
+	{
+		api.GET("/auth/profile", authH.Profile)
+		api.POST("/auth/refresh", authH.RefreshToken)
+
+		api.GET("/nodes", nodeH.List)
+		api.GET("/nodes/:id", nodeH.Get)
+		api.POST("/nodes/:id/command", nodeH.Command)
+		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
+
+		api.GET("/serial-ports", portH.List)
+
+		api.GET("/sessions", sessionH.List)
+		api.POST("/sessions/:id/kick", sessionH.Kick)
+		api.POST("/sessions/:id/assign-master", sessionH.AssignMaster)
+
+		api.GET("/audit-logs", auditH.List)
+	}
+
+	// WebSocket
+	r.GET("/api/ws", func(c *gin.Context) {
+		handler.HandleWS(c.Request, c.Writer)
+	})
+
+	// Health check
+	r.GET("/api/health", func(c *gin.Context) {
+		results := health.RunAll()
+		status := http.StatusOK
+		for _, r := range results {
+			if r.Status == "down" {
+				status = http.StatusServiceUnavailable
+				break
+			}
+		}
+		c.JSON(status, gin.H{"checks": results})
+	})
+
+	// FIXED: Log upload endpoint for agents
+	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
+
+	mainLog.Info("Center service starting on :8080")
+	if err := r.Run(":8080"); err != nil {
+		mainLog.Error("failed to start", log.Err(err))
+	}
+}
