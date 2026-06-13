@@ -5,21 +5,26 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// FIXED: JWT secret read from JWT_SECRET env var, log.Fatal if not set
-var JWTSecret []byte
+// FIXED: JWT secret read from JWT_SECRET env var, lazy-loaded
+var jwtSecret []byte
+var jwtOnce sync.Once
 
-func init() {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		log.Fatal("JWT_SECRET environment variable is required")
-	}
-	JWTSecret = []byte(secret)
+func getJWTSecret() []byte {
+	jwtOnce.Do(func() {
+		secret := os.Getenv("JWT_SECRET")
+		if secret == "" {
+			log.Fatal("JWT_SECRET environment variable is required")
+		}
+		jwtSecret = []byte(secret)
+	})
+	return jwtSecret
 }
 
 type Claims struct {
@@ -41,7 +46,7 @@ func GenerateToken(userID uint, username, role string) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(JWTSecret)
+	return token.SignedString(getJWTSecret())
 }
 
 // RefreshToken generates a new token with extended expiry.
@@ -55,7 +60,7 @@ func RefreshToken(oldToken string) (string, error) {
 
 func ParseToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
-		return JWTSecret, nil
+		return getJWTSecret(), nil
 	})
 	if err != nil {
 		return nil, err
