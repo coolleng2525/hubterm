@@ -1,13 +1,16 @@
 package main
 
 import (
+	"flag"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/coolleng2525/hubterm/internal/center/handler"
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/center/service"
+	"github.com/coolleng2525/hubterm/internal/pkg/config"
 	"github.com/coolleng2525/hubterm/internal/pkg/health"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
 )
@@ -33,8 +36,25 @@ func init() {
 }
 
 func main() {
+	configPath := flag.String("config", "", "path to config file (yaml)")
+	flag.Parse()
+
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		mainLog.Error("failed to load config", log.Err(err))
+		return
+	}
+
+	// Propagate config values to environment for downstream consumers
+	if cfg.Auth.JWTSecret != "" {
+		os.Setenv("JWT_SECRET", cfg.Auth.JWTSecret)
+	}
+	if cfg.Auth.AdminPassword != "" {
+		os.Setenv("ADMIN_PASSWORD", cfg.Auth.AdminPassword)
+	}
+
 	// init database
-	if err := model.InitDB("hubterm.db"); err != nil {
+	if err := model.InitDB(cfg.Database.Path); err != nil {
 		mainLog.Error("failed to init db", log.Err(err))
 		return
 	}
@@ -112,8 +132,9 @@ func main() {
 	// FIXED: Log upload endpoint for agents
 	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
 
-	mainLog.Info("Center service starting on :8080")
-	if err := r.Run(":8080"); err != nil {
+	addr := cfg.Server.Addr()
+	mainLog.Info("Center service starting on "+addr, log.String("addr", addr))
+	if err := r.Run(addr); err != nil {
 		mainLog.Error("failed to start", log.Err(err))
 	}
 }
