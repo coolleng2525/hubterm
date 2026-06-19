@@ -236,6 +236,15 @@ func main() {
 	// FIXED: Log upload endpoint for agents
 	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
 
+	r.GET("/", func(c *gin.Context) {
+		index := filepath.Join("web/dist", "index.html")
+		if _, err := os.Stat(index); err == nil {
+			c.File(index)
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "frontend not built"})
+	})
+
 	distDir := filepath.Clean("web/dist")
 	r.NoRoute(func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
