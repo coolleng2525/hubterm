@@ -25,17 +25,18 @@ var aiLog = log.New("ai_handler")
 // AIHandler provides AI-friendly REST API endpoints for device management and command execution.
 //
 // Endpoints:
-//   GET    /api/v1/devices              — Discover all online devices
-//   GET    /api/v1/devices/:id          — Get device details
-//   GET    /api/v1/devices/:id/capabilities — Get device capabilities
-//   POST   /api/v1/devices/:id/exec     — Execute a command on a device
-//   GET    /api/v1/devices/:id/exec/:cmd_id — Query command execution result
-//   POST   /api/v1/scripts              — Upload and execute a script on one or more targets
+//
+//	GET    /api/v1/devices              — Discover all online devices
+//	GET    /api/v1/devices/:id          — Get device details
+//	GET    /api/v1/devices/:id/capabilities — Get device capabilities
+//	POST   /api/v1/devices/:id/exec     — Execute a command on a device
+//	GET    /api/v1/devices/:id/exec/:cmd_id — Query command execution result
+//	POST   /api/v1/scripts              — Upload and execute a script on one or more targets
 type AIHandler struct {
-	DB          *gorm.DB
-	DeviceSvc   *service.DeviceService
-	AgentWS     *AgentWSHandler
-	ScriptH     *ScriptHandler
+	DB           *gorm.DB
+	DeviceSvc    *service.DeviceService
+	AgentWS      *AgentWSHandler
+	ScriptH      *ScriptHandler
 	ScriptEngine *script.Engine
 }
 
@@ -177,26 +178,26 @@ func (h *AIHandler) GetResult(c *gin.Context) {
 // UploadAndExecute handles POST /api/v1/scripts
 // Uploads a script and executes it on one or more target devices.
 //
-// Request: {
-//   "name": "ping-check",
-//   "description": "Ping a target IP",
-//   "language": "python",
-//   "source": "import subprocess\nsubprocess.run(['ping', '-c', '4', '${TARGET}'])",
-//   "params": [{"name": "TARGET", "type": "string", "required": true, "description": "IP to ping"}],
-//   "targets": ["ap-03", "server-db"],
-//   "timeout": 30
-// }
+//	Request: {
+//	  "name": "ping-check",
+//	  "description": "Ping a target IP",
+//	  "language": "python",
+//	  "source": "import subprocess\nsubprocess.run(['ping', '-c', '4', '${TARGET}'])",
+//	  "params": [{"name": "TARGET", "type": "string", "required": true, "description": "IP to ping"}],
+//	  "targets": ["ap-03", "server-db"],
+//	  "timeout": 30
+//	}
 //
 // Response: {"script_id": "...", "results": [{"target": "ap-03", "cmd_id": "...", "status": "pending"}, ...]}
 func (h *AIHandler) UploadAndExecute(c *gin.Context) {
 	var req struct {
-		Name        string        `json:"name" binding:"required"`
-		Description string        `json:"description"`
-		Language    string        `json:"language"`
-		Source      string        `json:"source" binding:"required"`
+		Name        string         `json:"name" binding:"required"`
+		Description string         `json:"description"`
+		Language    string         `json:"language"`
+		Source      string         `json:"source" binding:"required"`
 		Params      []script.Param `json:"params"`
-		Targets     []string      `json:"targets" binding:"required,min=1"`
-		Timeout     int           `json:"timeout"`
+		Targets     []string       `json:"targets" binding:"required,min=1"`
+		Timeout     int            `json:"timeout"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})

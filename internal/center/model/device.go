@@ -26,7 +26,7 @@ type Device struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	DeviceID     string    `gorm:"uniqueIndex;size:64;not null" json:"device_id"`
 	Name         string    `gorm:"size:128" json:"name"`
-	Type         string    `gorm:"size:32" json:"type"`          // ap / server / station / switch / router
+	Type         string    `gorm:"size:32" json:"type"` // ap / server / station / switch / router
 	IP           string    `gorm:"size:64" json:"ip"`
 	NodeID       string    `gorm:"index;size:64" json:"node_id"` // 所在节点
 	Protocol     string    `gorm:"size:32" json:"protocol"`      // serial / ssh / telnet
@@ -34,8 +34,8 @@ type Device struct {
 	Status       string    `gorm:"size:32;default:offline" json:"status"`
 	Capabilities string    `gorm:"size:1024" json:"capabilities"` // JSON 数组
 	Location     string    `gorm:"size:256" json:"location"`
-	Tags         string    `gorm:"size:512" json:"tags"`         // JSON 数组
-	Credentials  string    `gorm:"size:1024" json:"-"`           // 加密凭证，不暴露给 API
+	Tags         string    `gorm:"size:512" json:"tags"` // JSON 数组
+	Credentials  string    `gorm:"size:1024" json:"-"`   // 加密凭证，不暴露给 API
 	LastSeen     time.Time `json:"last_seen"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`

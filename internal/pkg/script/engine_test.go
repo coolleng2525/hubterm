@@ -16,8 +16,8 @@ func TestExecuteSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Stdout != "hello world\n" {
-		t.Fatalf("expected 'hello world\\n', got %q", result.Stdout)
+	if strings.TrimSpace(result.Stdout) != "hello world" {
+		t.Fatalf("expected 'hello world', got %q", result.Stdout)
 	}
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit code 0, got %d", result.ExitCode)
@@ -49,7 +49,8 @@ func TestExecuteWithParams(t *testing.T) {
 }
 
 func TestExecuteTimeout(t *testing.T) {
-	engine := &Engine{PythonPath: "python3", Timeout: 1 * time.Second}
+	engine := NewEngine()
+	engine.Timeout = 1 * time.Second
 	script := &Script{
 		Name:   "timeout",
 		Source: "import time; time.sleep(10); print('done')",

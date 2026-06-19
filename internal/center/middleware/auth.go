@@ -61,7 +61,7 @@ func RefreshToken(oldToken string) (string, error) {
 func ParseToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return getJWTSecret(), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +96,18 @@ func AdminRequired() gin.HandlerFunc {
 		role, _ := c.Get("role")
 		if role != "admin" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin required"})
+			return
+		}
+		c.Next()
+	}
+}
+
+// OperatorRequired allows roles that may change node state.
+func OperatorRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, _ := c.Get("role")
+		if role != "admin" && role != "operator" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "operator required"})
 			return
 		}
 		c.Next()

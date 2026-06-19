@@ -8,10 +8,10 @@ import (
 
 // User 用户
 type User struct {
-	ID           uint   `gorm:"primaryKey" json:"id"`
-	Username     string `gorm:"uniqueIndex;size:64;not null" json:"username"`
-	PasswordHash string `gorm:"size:256;not null" json:"-"`
-	Role         string `gorm:"size:32;not null;default:operator" json:"role"` // admin/operator/readonly
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Username     string    `gorm:"uniqueIndex;size:64;not null" json:"username"`
+	PasswordHash string    `gorm:"size:256;not null" json:"-"`
+	Role         string    `gorm:"size:32;not null;default:operator" json:"role"` // admin/operator/readonly
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -42,15 +42,15 @@ type Node struct {
 
 // SerialPort 串口
 type SerialPort struct {
-	ID              uint      `gorm:"primaryKey" json:"id"`
-	NodeID          string    `gorm:"index;size:64;not null" json:"node_id"`
-	PortName        string    `gorm:"size:64;not null" json:"port_name"`
-	Description     string    `gorm:"size:256" json:"description"`
-	Status          string    `gorm:"size:32;not null;default:offline" json:"status"` // online/offline/busy
-	BaudRate        int       `json:"baud_rate"`
-	CurrentSessionID string   `gorm:"size:64" json:"current_session_id"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID               uint      `gorm:"primaryKey" json:"id"`
+	NodeID           string    `gorm:"index;size:64;not null" json:"node_id"`
+	PortName         string    `gorm:"size:64;not null" json:"port_name"`
+	Description      string    `gorm:"size:256" json:"description"`
+	Status           string    `gorm:"size:32;not null;default:offline" json:"status"` // online/offline/busy
+	BaudRate         int       `json:"baud_rate"`
+	CurrentSessionID string    `gorm:"size:64" json:"current_session_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // Session 会话

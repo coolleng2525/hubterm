@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -80,9 +81,22 @@ type Engine struct {
 // It uses "python3" as the Python interpreter and a 30-second timeout.
 func NewEngine() *Engine {
 	return &Engine{
-		PythonPath: "python3",
+		PythonPath: defaultPythonPath(),
 		Timeout:    30 * time.Second,
 	}
+}
+
+func defaultPythonPath() string {
+	candidates := []string{"python3", "python"}
+	if runtime.GOOS == "windows" {
+		candidates = []string{"python", "py"}
+	}
+	for _, candidate := range candidates {
+		if path, err := exec.LookPath(candidate); err == nil {
+			return path
+		}
+	}
+	return candidates[0]
 }
 
 // Execute runs a script locally with the given parameters.
@@ -96,9 +110,6 @@ func (e *Engine) Execute(script *Script, params map[string]string) (*Result, err
 
 	// Determine the interpreter based on language.
 	interpreter := e.PythonPath
-	if script.Language == "shell" {
-		interpreter = "bash"
-	}
 
 	// Resolve parameter placeholders in the source.
 	source := resolveParams(script.Source, params)
@@ -120,6 +131,14 @@ func (e *Engine) Execute(script *Script, params map[string]string) (*Result, err
 
 	// Build command arguments: the temp file path followed by parameter values.
 	args := []string{tmpPath}
+	if script.Language == "shell" {
+		if runtime.GOOS == "windows" {
+			interpreter = "cmd"
+			args = []string{"/c", source}
+		} else {
+			interpreter = "bash"
+		}
+	}
 	for _, p := range script.Params {
 		if val, ok := params[p.Name]; ok {
 			args = append(args, val)

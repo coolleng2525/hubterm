@@ -6,8 +6,8 @@ database:
   path: hubterm.db
 
 auth:
-  jwt_secret: "change-me-in-production"
-  admin_password: "admin123"
+  jwt_secret: ""
+  admin_password: ""
 
 log:
   level: info

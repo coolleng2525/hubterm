@@ -34,12 +34,12 @@ func NewScriptHandler(db *gorm.DB, engine *script.Engine) *ScriptHandler {
 // Request body: {"name": "...", "description": "...", "language": "python", "source": "...", "params": [...], "timeout": 30}
 func (h *ScriptHandler) Create(c *gin.Context) {
 	var req struct {
-		Name        string        `json:"name" binding:"required"`
-		Description string        `json:"description"`
-		Language    string        `json:"language"`
-		Source      string        `json:"source" binding:"required"`
+		Name        string         `json:"name" binding:"required"`
+		Description string         `json:"description"`
+		Language    string         `json:"language"`
+		Source      string         `json:"source" binding:"required"`
 		Params      []script.Param `json:"params"`
-		Timeout     int           `json:"timeout"`
+		Timeout     int            `json:"timeout"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

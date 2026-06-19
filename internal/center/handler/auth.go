@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
@@ -94,6 +94,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if req.Role == "" {
 		req.Role = "operator"
+	}
+	if req.Role != "admin" && req.Role != "operator" && req.Role != "readonly" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be admin, operator, or readonly"})
+		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)

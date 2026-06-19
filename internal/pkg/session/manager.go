@@ -33,13 +33,13 @@ func NewMessage(msgType int, content string) Message {
 
 // Session represents an active terminal session.
 type Session struct {
-	ID         string            // unique session identifier
-	Protocol   string            // ssh / serial / telnet
-	Mode       string            // master / watcher
-	WebSocket  *websocket.Conn   // WebSocket connection to the frontend
-	SSHClient  *ssh.Client       // SSH client (nil for serial/telnet)
-	SSHChannel ssh.Channel       // SSH channel (nil for serial/telnet)
-	Observer   *Manager          // observer manager for session sharing
+	ID         string          // unique session identifier
+	Protocol   string          // ssh / serial / telnet
+	Mode       string          // master / watcher
+	WebSocket  *websocket.Conn // WebSocket connection to the frontend
+	SSHClient  *ssh.Client     // SSH client (nil for serial/telnet)
+	SSHChannel ssh.Channel     // SSH channel (nil for serial/telnet)
+	Observer   *Manager        // observer manager for session sharing
 	mu         sync.Mutex
 }
 
@@ -57,6 +57,12 @@ func (s *Session) WriteMessage(msg Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.WebSocket.WriteMessage(websocket.TextMessage, []byte(msg.ToString()))
+}
+
+func (s *Session) SetMode(mode string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Mode = mode
 }
 
 // Close cleans up all resources held by this session:
