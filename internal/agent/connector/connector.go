@@ -5,22 +5,39 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
+	"github.com/gorilla/websocket"
 )
 
 // CenterCommand 中心下发的指令
 type CenterCommand struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"`    // exec / shell / ping / restart
+	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command string `json:"command,omitempty"`
-		Timeout int    `json:"timeout,omitempty"` // 秒
+		Command   string `json:"command,omitempty"`
+		Timeout   int    `json:"timeout,omitempty"` // 秒
+		SessionID string `json:"session_id,omitempty"`
 	} `json:"payload,omitempty"`
+}
+
+// SetNodeToken updates authentication for subsequent reconnects.
+func (c *Connector) SetNodeToken(token string) {
+	c.mu.Lock()
+	if token == "" || token == c.NodeToken {
+		c.mu.Unlock()
+		return
+	}
+	c.NodeToken = token
+	conn := c.ws
+	c.mu.Unlock()
+	if conn != nil {
+		_ = conn.Close()
+	}
 }
 
 // Connector 维护与中心的 WebSocket 长连接
@@ -85,10 +102,17 @@ func (c *Connector) connectOnce() error {
 	if u.Scheme == "https" {
 		scheme = "wss"
 	}
-	wsURL := fmt.Sprintf("%s://%s/api/ws/agent?node_id=%s&token=%s",
-		scheme, u.Host, c.NodeID, c.NodeToken)
+	c.mu.Lock()
+	token := c.NodeToken
+	c.mu.Unlock()
+	if token == "" {
+		return fmt.Errorf("node token is not available yet")
+	}
+	wsURL := fmt.Sprintf("%s://%s/api/ws/agent?node_id=%s", scheme, u.Host, url.QueryEscape(c.NodeID))
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+token)
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	if err != nil {
 		return fmt.Errorf("dial websocket: %w", err)
 	}
@@ -97,7 +121,7 @@ func (c *Connector) connectOnce() error {
 	c.ws = conn
 	c.mu.Unlock()
 
-	log.Printf("[connector] connected to center: %s", wsURL)
+	log.Printf("[connector] connected to center: node=%s", c.NodeID)
 
 	// 读取消息循环
 	for {

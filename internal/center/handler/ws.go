@@ -2,26 +2,41 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 
-	"github.com/gorilla/websocket"
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
-	// FIXED: CheckOrigin validates Origin header in production
+	Subprotocols: []string{"hubterm"},
 	CheckOrigin: func(r *http.Request) bool {
-		// Allow all origins in dev; in production, validate against known origins
 		origin := r.Header.Get("Origin")
 		if origin == "" {
-			return true // allow direct connections
+			return true
 		}
-		// TODO: restrict to known origins in production
-		return true
+		u, err := url.Parse(origin)
+		return err == nil && strings.EqualFold(u.Host, r.Host)
 	},
+}
+
+func AuthenticateWebSocket(r *http.Request) (*middleware.Claims, error) {
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return middleware.ParseToken(strings.TrimPrefix(auth, "Bearer "))
+	}
+	for _, protocol := range websocket.Subprotocols(r) {
+		if strings.HasPrefix(protocol, "hubterm.auth.") {
+			return middleware.ParseToken(strings.TrimPrefix(protocol, "hubterm.auth."))
+		}
+	}
+	return nil, fmt.Errorf("missing websocket token")
 }
 
 var (
@@ -35,12 +50,7 @@ var wsLog = log.New("ws")
 // FIXED: Token is validated via URL query parameter.
 func HandleWS(r *http.Request, w http.ResponseWriter) {
 	// FIXED: Validate token from URL query parameter
-	tokenStr := r.URL.Query().Get("token")
-	if tokenStr == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
-		return
-	}
-	claims, err := middleware.ParseToken(tokenStr)
+	claims, err := AuthenticateWebSocket(r)
 	if err != nil {
 		wsLog.Warn("ws auth failed", log.String("reason", err.Error()))
 		http.Error(w, "invalid token", http.StatusUnauthorized)

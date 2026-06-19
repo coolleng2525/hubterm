@@ -7,8 +7,8 @@ services:
     volumes:
       - hubterm-data:/data
     environment:
-      - JWT_SECRET=change-me-in-production
-      - ADMIN_PASSWORD=admin123
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
       - DB_PATH=/data/hubterm.db
     restart: unless-stopped
 

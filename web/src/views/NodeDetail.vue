@@ -38,7 +38,7 @@
         <el-table-column prop="baud_rate" label="波特率" width="80" />
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="openTerminal(row)">终端</el-button>
+			<el-button type="primary" link size="small" @click="openTerminal(row)">SSH终端</el-button>
           </template>
         </el-table-column>
       </el-table>

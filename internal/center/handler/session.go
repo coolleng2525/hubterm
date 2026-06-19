@@ -3,14 +3,19 @@ package handler
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type SessionHandler struct {
-	DB *gorm.DB
+	DB      *gorm.DB
+	AgentWS SessionCommander
+}
+
+type SessionCommander interface {
+	SendControlCommand(nodeID, commandType, sessionID string) (string, error)
 }
 
 var sessionLog = log.New("session_handler")
@@ -44,6 +49,15 @@ func (h *SessionHandler) Kick(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
+	if h.AgentWS == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "agent command channel is unavailable"})
+		return
+	}
+	cmdID, err := h.AgentWS.SendControlCommand(session.NodeID, "kick_session", session.SessionID)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 
 	// FIXED: check Delete error
 	if err := h.DB.Delete(&session).Error; err != nil {
@@ -68,7 +82,7 @@ func (h *SessionHandler) Kick(c *gin.Context) {
 		sessionLog.Error("failed to create audit log", log.Err(err))
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusAccepted, gin.H{"success": true, "cmd_id": cmdID, "status": "pending"})
 }
 
 func (h *SessionHandler) AssignMaster(c *gin.Context) {
@@ -78,6 +92,15 @@ func (h *SessionHandler) AssignMaster(c *gin.Context) {
 	var session model.Session
 	if err := h.DB.Where("session_id = ? OR id = ?", id, id).First(&session).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+	if h.AgentWS == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "agent command channel is unavailable"})
+		return
+	}
+	cmdID, err := h.AgentWS.SendControlCommand(session.NodeID, "assign_master", session.SessionID)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -115,5 +138,5 @@ func (h *SessionHandler) AssignMaster(c *gin.Context) {
 		sessionLog.Error("failed to create audit log", log.Err(err))
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusAccepted, gin.H{"success": true, "cmd_id": cmdID, "status": "pending"})
 }

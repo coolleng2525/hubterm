@@ -2,21 +2,23 @@ package handler
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
 	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type NodeHandler struct {
-	DB *gorm.DB
+	DB      *gorm.DB
+	AgentWS *AgentWSHandler
 }
 
 var nodeLog = log.New("node_handler")
@@ -25,7 +27,7 @@ var nodeLog = log.New("node_handler")
 func NodeTokenRequired(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
-		if auth == "" {
+		if !strings.HasPrefix(auth, "Bearer ") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
 			return
 		}
@@ -106,12 +108,17 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if strings.TrimSpace(report.NodeID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "node_id is required"})
+		return
+	}
 
 	now := time.Now()
 
 	// upsert node
 	var node model.Node
 	result := h.DB.Where("node_id = ?", report.NodeID).First(&node)
+	isNew := result.Error == gorm.ErrRecordNotFound
 	if result.Error != nil {
 		if result.Error != gorm.ErrRecordNotFound {
 			nodeLog.Error("failed to query node", log.Err(result.Error), log.String("node_id", report.NodeID))
@@ -130,10 +137,14 @@ func (h *NodeHandler) Report(c *gin.Context) {
 			Token:     token,
 			CreatedAt: now,
 		}
-		nodeLog.Info("new node registered",
-			log.String("node_id", report.NodeID),
-			log.String("token", token),
-		)
+		nodeLog.Info("new node registered", log.String("node_id", report.NodeID))
+	} else {
+		auth := c.GetHeader("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") ||
+			subtle.ConstantTimeCompare([]byte(strings.TrimPrefix(auth, "Bearer ")), []byte(node.Token)) != 1 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid node token"})
+			return
+		}
 	}
 	node.Name = report.Name
 	node.IP = report.IP
@@ -193,6 +204,17 @@ func (h *NodeHandler) Report(c *gin.Context) {
 			nodeLog.Error("failed to save port", log.Err(err), log.String("port", sp.PortName))
 		}
 	}
+	portNames := make([]string, 0, len(report.SerialPorts))
+	for _, sp := range report.SerialPorts {
+		portNames = append(portNames, sp.PortName)
+	}
+	stalePorts := h.DB.Where("node_id = ?", report.NodeID)
+	if len(portNames) > 0 {
+		stalePorts = stalePorts.Where("port_name NOT IN ?", portNames)
+	}
+	if err := stalePorts.Delete(&model.SerialPort{}).Error; err != nil {
+		nodeLog.Error("failed to delete stale ports", log.Err(err), log.String("node_id", report.NodeID))
+	}
 
 	// sync sessions: delete old, insert new
 	// FIXED: check Delete error
@@ -218,7 +240,11 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	// broadcast node update via WS
 	BroadcastNodeUpdate(node)
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "token": node.Token})
+	response := gin.H{"success": true}
+	if isNew {
+		response["token"] = node.Token
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // Command 下发指令到节点
@@ -227,6 +253,19 @@ func (h *NodeHandler) Command(c *gin.Context) {
 	var req hubtermproto.CommandRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if strings.TrimSpace(req.Command) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "command is required"})
+		return
+	}
+	if h.AgentWS == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "agent command channel is unavailable"})
+		return
+	}
+	cmdID, err := h.AgentWS.SendExecCommand(id, req.Command, 30)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -247,7 +286,7 @@ func (h *NodeHandler) Command(c *gin.Context) {
 		log.String("command", req.Command),
 	)
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "command queued"})
+	c.JSON(http.StatusAccepted, gin.H{"success": true, "cmd_id": cmdID, "status": "pending"})
 }
 
 // RegenerateToken generates a new node token.
@@ -284,6 +323,11 @@ func (h *NodeHandler) GetPendingCommands(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "node_id required"})
 		return
 	}
+	authenticatedNodeID, _ := c.Get("node_id")
+	if authenticatedNodeID != nodeID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "node token does not match node_id"})
+		return
+	}
 	// simplified: return empty list
 	c.JSON(http.StatusOK, gin.H{"commands": []hubtermproto.CommandRequest{}})
 }
@@ -300,14 +344,12 @@ func (h *NodeHandler) ExecCommand(c *gin.Context) {
 	}
 
 	// 获取 agent WS handler
-	agentWS, ok := c.Get("agent_ws_handler")
-	if !ok {
+	if h.AgentWS == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "agent WS handler not available"})
 		return
 	}
-	awh := agentWS.(*AgentWSHandler)
 
-	if !awh.IsNodeConnected(id) {
+	if !h.AgentWS.IsNodeConnected(id) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "node not connected"})
 		return
 	}
@@ -317,7 +359,7 @@ func (h *NodeHandler) ExecCommand(c *gin.Context) {
 		timeout = 30
 	}
 
-	cmdID, err := awh.SendExecCommand(id, req.Command, timeout)
+	cmdID, err := h.AgentWS.SendExecCommand(id, req.Command, timeout)
 	if err != nil {
 		nodeLog.Error("failed to send exec command", log.Err(err), log.String("node_id", id))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -351,10 +393,11 @@ func (h *NodeHandler) ExecCommand(c *gin.Context) {
 // GetExecResult 查询命令执行结果 (GET /api/nodes/:id/exec/:cmd_id)
 // Response: {"status": "completed", "result": {"stdout": "...", "stderr": "...", "exit_code": 0}}
 func (h *NodeHandler) GetExecResult(c *gin.Context) {
+	nodeID := c.Param("id")
 	cmdID := c.Param("cmd_id")
 
 	entry := GetExecResult(cmdID)
-	if entry == nil {
+	if entry == nil || entry.NodeID != nodeID {
 		c.JSON(http.StatusNotFound, gin.H{"error": "command not found"})
 		return
 	}

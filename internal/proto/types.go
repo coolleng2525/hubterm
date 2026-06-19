@@ -9,23 +9,23 @@ type NetworkInterfaceInfo struct {
 
 // NodeReport 节点上报数据
 type NodeReport struct {
-	NodeID      string                `json:"node_id"`
-	Name        string                `json:"name"`
-	IP          string                `json:"ip"`
-	Hostname    string                `json:"hostname"`
-	OS          string                `json:"os"`
-	OSVersion   string                `json:"os_version"`
-	Arch        string                `json:"arch"`
-	CPUPercent  float64               `json:"cpu_percent"`
-	MemoryTotal uint64                `json:"memory_total"`
-	MemoryUsed  uint64                `json:"memory_used"`
-	MemoryPercent float64             `json:"memory_percent"`
-	DiskTotal   uint64                `json:"disk_total"`
-	DiskUsed    uint64                `json:"disk_used"`
-	Interfaces  []NetworkInterfaceInfo `json:"interfaces"`
-	SerialPorts []SerialPortInfo      `json:"serial_ports"`
-	Sessions    []SessionInfo         `json:"sessions"`
-	Ser2net     *Ser2netStatus        `json:"ser2net,omitempty"`
+	NodeID        string                 `json:"node_id"`
+	Name          string                 `json:"name"`
+	IP            string                 `json:"ip"`
+	Hostname      string                 `json:"hostname"`
+	OS            string                 `json:"os"`
+	OSVersion     string                 `json:"os_version"`
+	Arch          string                 `json:"arch"`
+	CPUPercent    float64                `json:"cpu_percent"`
+	MemoryTotal   uint64                 `json:"memory_total"`
+	MemoryUsed    uint64                 `json:"memory_used"`
+	MemoryPercent float64                `json:"memory_percent"`
+	DiskTotal     uint64                 `json:"disk_total"`
+	DiskUsed      uint64                 `json:"disk_used"`
+	Interfaces    []NetworkInterfaceInfo `json:"interfaces"`
+	SerialPorts   []SerialPortInfo       `json:"serial_ports"`
+	Sessions      []SessionInfo          `json:"sessions"`
+	Ser2net       *Ser2netStatus         `json:"ser2net,omitempty"`
 }
 
 // Ser2netStatus ser2net 安装和运行状态
@@ -85,10 +85,11 @@ type WSMessage struct {
 // ExecCommand 中心下发的命令执行请求
 type ExecCommand struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"`    // exec / shell / ping / restart
+	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command string `json:"command,omitempty"`
-		Timeout int    `json:"timeout,omitempty"` // 秒
+		Command   string `json:"command,omitempty"`
+		Timeout   int    `json:"timeout,omitempty"` // 秒
+		SessionID string `json:"session_id,omitempty"`
 	} `json:"payload,omitempty"`
 }
 
@@ -103,8 +104,8 @@ type ExecResult struct {
 
 // ExecResponse 中心返回给节点的执行结果确认
 type ExecResponse struct {
-	CmdID  string `json:"cmd_id"`
-	Status string `json:"status"` // pending / running / completed / failed
+	CmdID  string      `json:"cmd_id"`
+	Status string      `json:"status"` // pending / running / completed / failed
 	Result *ExecResult `json:"result,omitempty"`
 }
 

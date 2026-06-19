@@ -12,12 +12,22 @@ import (
 	"github.com/coolleng2525/hubterm/internal/center/model"
 )
 
+type fakeSessionCommander struct {
+	commands []string
+}
+
+func (f *fakeSessionCommander) SendControlCommand(nodeID, commandType, sessionID string) (string, error) {
+	f.commands = append(f.commands, nodeID+":"+commandType+":"+sessionID)
+	return "cmd-test", nil
+}
+
 func TestKickSession(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
 	defer os.Unsetenv("JWT_SECRET")
 
 	db := setupTestDB(t)
-	handler := &SessionHandler{DB: db}
+	commander := &fakeSessionCommander{}
+	handler := &SessionHandler{DB: db, AgentWS: commander}
 
 	// Seed a session
 	db.Create(&model.Session{
@@ -37,8 +47,8 @@ func TestKickSession(t *testing.T) {
 
 		handler.Kick(c)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected 202, got %d: %s", w.Code, w.Body.String())
 		}
 
 		var resp map[string]interface{}
@@ -54,6 +64,9 @@ func TestKickSession(t *testing.T) {
 		db.Model(&model.Session{}).Where("session_id = ?", "sess-kick-001").Count(&count)
 		if count != 0 {
 			t.Errorf("expected session to be deleted, count=%d", count)
+		}
+		if len(commander.commands) != 1 || commander.commands[0] != "node-001:kick_session:sess-kick-001" {
+			t.Errorf("unexpected agent commands: %v", commander.commands)
 		}
 	})
 
@@ -77,7 +90,8 @@ func TestAssignMaster(t *testing.T) {
 	defer os.Unsetenv("JWT_SECRET")
 
 	db := setupTestDB(t)
-	handler := &SessionHandler{DB: db}
+	commander := &fakeSessionCommander{}
+	handler := &SessionHandler{DB: db, AgentWS: commander}
 
 	// Seed sessions: one master and one watcher on same port
 	db.Create(&model.Session{
@@ -104,8 +118,8 @@ func TestAssignMaster(t *testing.T) {
 
 		handler.AssignMaster(c)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected 202, got %d: %s", w.Code, w.Body.String())
 		}
 
 		var resp map[string]interface{}
@@ -128,6 +142,9 @@ func TestAssignMaster(t *testing.T) {
 		db.Where("session_id = ?", "sess-watcher-001").First(&newMaster)
 		if newMaster.Type != "master" {
 			t.Errorf("expected new master type=master, got %s", newMaster.Type)
+		}
+		if len(commander.commands) != 1 || commander.commands[0] != "node-001:assign_master:sess-watcher-001" {
+			t.Errorf("unexpected agent commands: %v", commander.commands)
 		}
 	})
 

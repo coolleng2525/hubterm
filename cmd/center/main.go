@@ -4,16 +4,17 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/coolleng2525/hubterm/internal/center/handler"
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/center/service"
 	"github.com/coolleng2525/hubterm/internal/pkg/config"
-	"github.com/coolleng2525/hubterm/internal/pkg/script"
 	"github.com/coolleng2525/hubterm/internal/pkg/health"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	"github.com/gin-gonic/gin"
 )
 
 var mainLog = log.New("center")
@@ -65,28 +66,14 @@ func main() {
 
 	r := gin.Default()
 
-	// CORS
-	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
-	})
-
 	// handlers
 	authH := &handler.AuthHandler{DB: model.GetDB()}
-	nodeH := &handler.NodeHandler{DB: model.GetDB()}
 	portH := &handler.SerialPortHandler{DB: model.GetDB()}
-	sessionH := &handler.SessionHandler{DB: model.GetDB()}
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
 	agentWSH := handler.NewAgentWSHandler(model.GetDB())
-	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
-	deviceSvc := service.NewDeviceService(model.GetDB())
-	aiH := handler.NewAIHandler(model.GetDB(), deviceSvc, agentWSH)
+	terminalH := &handler.TerminalHandler{RecordingDir: "recordings"}
+	nodeH := &handler.NodeHandler{DB: model.GetDB(), AgentWS: agentWSH}
+	sessionH := &handler.SessionHandler{DB: model.GetDB(), AgentWS: agentWSH}
 
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
@@ -104,40 +91,18 @@ func main() {
 
 		api.GET("/nodes", nodeH.List)
 		api.GET("/nodes/:id", nodeH.Get)
-		api.POST("/nodes/:id/command", nodeH.Command)
-		api.POST("/nodes/:id/exec", func(c *gin.Context) {
-			c.Set("agent_ws_handler", agentWSH)
-			nodeH.ExecCommand(c)
-		})
-		api.GET("/nodes/:id/exec/:cmd_id", nodeH.GetExecResult)
+		api.POST("/nodes/:id/command", middleware.OperatorRequired(), nodeH.Command)
+		api.POST("/nodes/:id/exec", middleware.OperatorRequired(), nodeH.ExecCommand)
+		api.GET("/nodes/:id/exec/:cmd_id", middleware.OperatorRequired(), nodeH.GetExecResult)
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
 
 		api.GET("/serial-ports", portH.List)
 
 		api.GET("/sessions", sessionH.List)
-		api.POST("/sessions/:id/kick", sessionH.Kick)
-		api.POST("/sessions/:id/assign-master", sessionH.AssignMaster)
+		api.POST("/sessions/:id/kick", middleware.OperatorRequired(), sessionH.Kick)
+		api.POST("/sessions/:id/assign-master", middleware.OperatorRequired(), sessionH.AssignMaster)
 
 		api.GET("/audit-logs", auditH.List)
-
-		api.POST("/scripts", scriptH.Create)
-		api.POST("/scripts/:id/execute", scriptH.Execute)
-		api.POST("/scripts/:id/execute-on-node/:node_id", scriptH.ExecuteOnNode)
-		api.GET("/scripts", scriptH.List)
-		api.GET("/scripts/:id", scriptH.Get)
-		api.DELETE("/scripts/:id", scriptH.Delete)
-		api.GET("/scripts/:id/results", scriptH.Results)
-
-		// AI-friendly API v1 routes
-		v1 := api.Group("/v1")
-		{
-			v1.GET("/devices", aiH.Discover)
-			v1.GET("/devices/:id", aiH.GetDevice)
-			v1.GET("/devices/:id/capabilities", aiH.GetCapabilities)
-			v1.POST("/devices/:id/exec", aiH.Execute)
-			v1.GET("/devices/:id/exec/:cmd_id", aiH.GetResult)
-			v1.POST("/scripts", aiH.UploadAndExecute)
-		}
 	}
 
 	// WebSocket — browser clients
@@ -148,6 +113,25 @@ func main() {
 	// WebSocket — agent connections
 	r.GET("/api/ws/agent", func(c *gin.Context) {
 		agentWSH.HandleAgentWS(c.Writer, c.Request)
+	})
+	r.GET("/api/v1/terminal/connect", func(c *gin.Context) {
+		claims, err := handler.AuthenticateWebSocket(c.Request)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+		if claims.Role != "admin" && claims.Role != "operator" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "operator required"})
+			return
+		}
+		terminalH.HandleTerminal(c)
+	})
+	r.GET("/api/v1/terminal/monitor/:session_id", func(c *gin.Context) {
+		if _, err := handler.AuthenticateWebSocket(c.Request); err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+		terminalH.HandleMonitor(c)
 	})
 
 	// Health check
@@ -165,6 +149,30 @@ func main() {
 
 	// FIXED: Log upload endpoint for agents
 	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
+
+	distDir := filepath.Clean("web/dist")
+	r.NoRoute(func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		cleanURLPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean("/"+c.Request.URL.Path)), "/")
+		requested := filepath.Join(distDir, filepath.FromSlash(cleanURLPath))
+		if info, err := os.Stat(requested); err == nil && !info.IsDir() {
+			c.File(requested)
+			return
+		}
+		index := filepath.Join(distDir, "index.html")
+		if _, err := os.Stat(index); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "frontend is not built"})
+			return
+		}
+		c.File(index)
+	})
 
 	addr := cfg.Server.Addr()
 	mainLog.Info("Center service starting on "+addr, log.String("addr", addr))

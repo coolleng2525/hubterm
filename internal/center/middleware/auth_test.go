@@ -260,3 +260,29 @@ func TestRoleMiddleware(t *testing.T) {
 		}
 	})
 }
+
+func TestOperatorRequired(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tc := range []struct {
+		role string
+		want int
+	}{
+		{role: "admin", want: http.StatusOK},
+		{role: "operator", want: http.StatusOK},
+		{role: "readonly", want: http.StatusForbidden},
+		{role: "", want: http.StatusForbidden},
+	} {
+		t.Run(tc.role, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+			if tc.role != "" {
+				c.Set("role", tc.role)
+			}
+			OperatorRequired()(c)
+			if w.Code != tc.want {
+				t.Fatalf("role %q: expected %d, got %d", tc.role, tc.want, w.Code)
+			}
+		})
+	}
+}

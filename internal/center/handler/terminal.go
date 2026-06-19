@@ -8,7 +8,6 @@
 package handler
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -16,9 +15,7 @@ import (
 	"io"
 	"path"
 	"strconv"
-	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -50,24 +47,24 @@ var terminalLog = log.New("terminal")
 // TerminalConnectRequest describes the parameters needed to establish
 // a terminal connection.
 type TerminalConnectRequest struct {
-	SessionID   string `json:"session_id"`              // unique session identifier
-	Protocol    string `json:"protocol"`                 // ssh / serial / telnet
-	IP          string `json:"ip"`                       // target IP
-	Port        int    `json:"port"`                     // target port
-	Username    string `json:"username"`                 // SSH username
-	Password    string `json:"password"`                 // SSH password
-	PrivateKey  string `json:"private_key"`              // SSH private key
-	Passphrase  string `json:"passphrase"`               // SSH key passphrase
-	Cols        int    `json:"cols"`                     // terminal width
-	Rows        int    `json:"rows"`                     // terminal height
-	TermType    string `json:"term_type"`                // terminal type (e.g., "xterm-256color")
-	GatewayID   string `json:"gateway_id,omitempty"`     // optional jump host gateway ID
-	Recording   bool   `json:"recording"`                // enable session recording
-	SocksEnable bool   `json:"socks_enable"`             // enable SOCKS5 proxy
-	SocksHost   string `json:"socks_host,omitempty"`     // SOCKS5 proxy host
-	SocksPort   string `json:"socks_port,omitempty"`     // SOCKS5 proxy port
-	SocksUser   string `json:"socks_user,omitempty"`     // SOCKS5 proxy username
-	SocksPass   string `json:"socks_pass,omitempty"`     // SOCKS5 proxy password
+	SessionID   string `json:"session_id"`           // unique session identifier
+	Protocol    string `json:"protocol"`             // ssh / serial / telnet
+	IP          string `json:"ip"`                   // target IP
+	Port        int    `json:"port"`                 // target port
+	Username    string `json:"username"`             // SSH username
+	Password    string `json:"password"`             // SSH password
+	PrivateKey  string `json:"private_key"`          // SSH private key
+	Passphrase  string `json:"passphrase"`           // SSH key passphrase
+	Cols        int    `json:"cols"`                 // terminal width
+	Rows        int    `json:"rows"`                 // terminal height
+	TermType    string `json:"term_type"`            // terminal type (e.g., "xterm-256color")
+	GatewayID   string `json:"gateway_id,omitempty"` // optional jump host gateway ID
+	Recording   bool   `json:"recording"`            // enable session recording
+	SocksEnable bool   `json:"socks_enable"`         // enable SOCKS5 proxy
+	SocksHost   string `json:"socks_host,omitempty"` // SOCKS5 proxy host
+	SocksPort   string `json:"socks_port,omitempty"` // SOCKS5 proxy port
+	SocksUser   string `json:"socks_user,omitempty"` // SOCKS5 proxy username
+	SocksPass   string `json:"socks_pass,omitempty"` // SOCKS5 proxy password
 }
 
 // HandleTerminal handles WebSocket terminal connections.
@@ -216,29 +213,30 @@ func (h *TerminalHandler) HandleTerminal(c *gin.Context) {
 	defer session.GlobalSessionManager.Remove(req.SessionID)
 
 	// Send connected message
-	writeWSMsg(ws, session.NewMessage(MsgConnected, ""))
+	_ = ss.WriteMessage(session.NewMessage(MsgConnected, ""))
 
 	// Start terminal I/O goroutines
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	done := make(chan struct{}, 2)
 
-	// Goroutine: read from SSH stdout → buffer → WebSocket
-	stdoutReader := bufio.NewReader(stdoutPipe)
 	go func() {
-		defer wg.Done()
-		writeTerminalOutput(ctx, ws, stdoutReader, rec, req.SessionID)
+		defer func() { done <- struct{}{} }()
+		writeTerminalOutput(ctx, ss, stdoutPipe, rec, req.SessionID)
 	}()
 
-	// Goroutine: read from WebSocket → write to SSH stdin
 	go func() {
-		defer wg.Done()
-		readWebSocketInput(ctx, ws, stdinPipe, sshSession)
+		defer func() { done <- struct{}{} }()
+		readWebSocketInput(ctx, ss, stdinPipe, sshSession)
 	}()
 
-	wg.Wait()
+	<-done
+	cancel()
+	_ = ws.Close()
+	_ = sshSession.Close()
+	_ = stdinPipe.Close()
+	<-done
 }
 
 // HandleMonitor handles observer (monitor) mode WebSocket connections.
@@ -274,7 +272,7 @@ func (h *TerminalHandler) HandleMonitor(c *gin.Context) {
 	defer ss.Observer.Remove(obID)
 
 	// Send connected message
-	writeWSMsg(ws, session.NewMessage(MsgConnected, ""))
+	_ = obSession.WriteMessage(session.NewMessage(MsgConnected, ""))
 
 	// Keep connection alive until WebSocket disconnects
 	for {
@@ -287,68 +285,46 @@ func (h *TerminalHandler) HandleMonitor(c *gin.Context) {
 
 // writeTerminalOutput reads from the SSH stdout reader and sends data
 // to the WebSocket client, optionally recording and broadcasting to observers.
-func writeTerminalOutput(ctx context.Context, ws *websocket.Conn, reader *bufio.Reader, rec *recorder.Recorder, sessionID string) {
-	tick := time.NewTicker(60 * time.Millisecond)
-	defer tick.Stop()
-
-	var buf bytesBuffer
+func writeTerminalOutput(ctx context.Context, ss *session.Session, reader io.Reader, rec *recorder.Recorder, sessionID string) {
+	buf := make([]byte, 32*1024)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			rn, size, err := reader.ReadRune()
+			n, err := reader.Read(buf)
 			if err != nil {
 				if err != io.EOF {
 					terminalLog.Warn("read rune error", log.Err(err))
 				}
 				return
 			}
-			if size > 0 {
-				if rn != utf8.RuneError {
-					p := make([]byte, utf8.RuneLen(rn))
-					utf8.EncodeRune(p, rn)
-					buf.Write(p)
-				} else {
-					buf.Write([]byte("@"))
+			if n == 0 {
+				continue
+			}
+			s := string(buf[:n])
+			if err := ss.WriteMessage(session.NewMessage(MsgData, s)); err != nil {
+				return
+			}
+			if rec != nil {
+				if err := rec.WriteData(s); err != nil {
+					terminalLog.Warn("recorder write error", log.Err(err))
 				}
 			}
-
-			// Flush on tick
-			select {
-			case <-tick.C:
-				s := buf.String()
-				if s == "" {
-					continue
-				}
-				msg := session.NewMessage(MsgData, s)
-				writeWSMsg(ws, msg)
-
-				// Record
-				if rec != nil {
-					if err := rec.WriteData(s); err != nil {
-						terminalLog.Warn("recorder write error", log.Err(err))
-					}
-				}
-
-				// Broadcast to observers
-				broadcastToObservers(sessionID, s)
-				buf.Reset()
-			default:
-			}
+			broadcastToObservers(sessionID, s)
 		}
 	}
 }
 
 // readWebSocketInput reads messages from the WebSocket and writes
 // data to the SSH stdin pipe.
-func readWebSocketInput(ctx context.Context, ws *websocket.Conn, stdinPipe io.WriteCloser, sshSession *ssh.Session) {
+func readWebSocketInput(ctx context.Context, ss *session.Session, stdinPipe io.WriteCloser, sshSession *ssh.Session) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			_, message, err := ws.ReadMessage()
+			_, message, err := ss.WebSocket.ReadMessage()
 			if err != nil {
 				return
 			}
@@ -379,7 +355,7 @@ func readWebSocketInput(ctx context.Context, ws *websocket.Conn, stdinPipe io.Wr
 				_ = sshSession.WindowChange(winSize.Rows, winSize.Cols)
 			case MsgPing:
 				// Respond with pong
-				writeWSMsg(ws, session.NewMessage(MsgPing, ""))
+				_ = ss.WriteMessage(session.NewMessage(MsgPing, ""))
 			case MsgClosed:
 				return
 			}
@@ -416,33 +392,6 @@ func writeWSMsg(ws *websocket.Conn, msg session.Message) {
 func writeWSError(ws *websocket.Conn, errMsg string) {
 	msg := session.NewMessage(MsgClosed, errMsg)
 	writeWSMsg(ws, msg)
-}
-
-// bytesBuffer is a simple goroutine-safe byte buffer for terminal output.
-type bytesBuffer struct {
-	mu  sync.Mutex
-	buf []byte
-}
-
-func (b *bytesBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.buf = append(b.buf, p...)
-	return len(p), nil
-}
-
-func (b *bytesBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	s := string(b.buf)
-	b.buf = b.buf[:0]
-	return s
-}
-
-func (b *bytesBuffer) Reset() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.buf = b.buf[:0]
 }
 
 // Ensure strconv import is used (referenced in interface but not directly in this file).

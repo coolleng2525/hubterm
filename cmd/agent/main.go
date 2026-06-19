@@ -11,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/coolleng2525/hubterm/internal/agent/connector"
 	"github.com/coolleng2525/hubterm/internal/agent/discovery"
 	"github.com/coolleng2525/hubterm/internal/agent/executor"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
 	"github.com/coolleng2525/hubterm/internal/agent/service"
+	"github.com/coolleng2525/hubterm/internal/pkg/session"
 	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
+	"github.com/google/uuid"
 )
 
 // NodeConfig 节点本地配置
@@ -40,7 +41,7 @@ func loadOrCreateConfig(dataDir string) *NodeConfig {
 	cfg.NodeID = uuid.New().String()
 	os.MkdirAll(dataDir, 0755)
 	data, _ := json.Marshal(cfg)
-	os.WriteFile(configPath, data, 0644)
+	os.WriteFile(configPath, data, 0600)
 	return cfg
 }
 
@@ -48,7 +49,7 @@ func loadOrCreateConfig(dataDir string) *NodeConfig {
 func saveConfig(dataDir string, cfg *NodeConfig) {
 	configPath := filepath.Join(dataDir, "node.json")
 	data, _ := json.Marshal(cfg)
-	os.WriteFile(configPath, data, 0644)
+	os.WriteFile(configPath, data, 0600)
 }
 
 // installService 安装为系统服务
@@ -111,6 +112,13 @@ func main() {
 
 	// 创建上报器
 	rep := reporter.NewReporter(centerAddr, cfg.NodeID, *nodeName)
+	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
+	rep.SetTokenHandler(func(token string) {
+		cfg.Token = token
+		saveConfig(*dataDir, cfg)
+		conn.SetNodeToken(token)
+		log.Printf("Node token saved to disk")
+	})
 	if cfg.Token != "" {
 		rep.SetNodeToken(cfg.Token)
 		log.Printf("Loaded saved node token")
@@ -122,18 +130,10 @@ func main() {
 	}
 
 	// 保存从首次上报获取的 token
-	if rep.NodeToken != "" && rep.NodeToken != cfg.Token {
-		cfg.Token = rep.NodeToken
-		saveConfig(*dataDir, cfg)
-		log.Printf("Node token saved to disk")
-	}
-
 	// 定期上报 (每 3 秒)
 	go rep.Start(3 * time.Second)
 
 	// 建立 WebSocket 连接
-	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
-
 	// 注册命令处理器
 	conn.SetCommandHandler(func(cmd *connector.CenterCommand) {
 		log.Printf("Received command: id=%s type=%s command=%s",
@@ -172,6 +172,19 @@ func main() {
 				"type":    "pong",
 				"node_id": cfg.NodeID,
 			})
+
+		case "kick_session":
+			session.GlobalSessionManager.Remove(cmd.Payload.SessionID)
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
+
+		case "assign_master":
+			target := session.GlobalSessionManager.Get(cmd.Payload.SessionID)
+			if target == nil {
+				_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, Stderr: "session not found", ExitCode: 1})
+				return
+			}
+			target.SetMode("master")
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 
 		default:
 			log.Printf("Unknown command type: %s", cmd.Type)

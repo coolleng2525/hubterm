@@ -104,6 +104,7 @@ func TestNodeReport(t *testing.T) {
 		}`
 		c.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body))
 		c.Request.Header.Set("Content-Type", "application/json")
+		c.Request.Header.Set("Authorization", "Bearer existing-token")
 
 		handler.Report(c)
 
@@ -124,6 +125,29 @@ func TestNodeReport(t *testing.T) {
 		// Token should remain unchanged for existing node
 		if node.Token != "existing-token" {
 			t.Errorf("expected token to remain existing-token, got %s", node.Token)
+		}
+		var response map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
+		if _, leaked := response["token"]; leaked {
+			t.Error("existing node report must not return its token")
+		}
+	})
+
+	t.Run("existing node rejects wrong token", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body := `{"node_id":"node-002","name":"hijacked","serial_ports":[],"sessions":[]}`
+		c.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Request.Header.Set("Authorization", "Bearer wrong-token")
+		handler.Report(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
+		}
+		var node model.Node
+		db.Where("node_id = ?", "node-002").First(&node)
+		if node.Name == "hijacked" {
+			t.Error("unauthorized report changed the node")
 		}
 	})
 
@@ -173,6 +197,21 @@ func TestNodeReport(t *testing.T) {
 		db.Where("node_id = ?", "node-003").Find(&sessions)
 		if len(sessions) != 1 {
 			t.Errorf("expected 1 session, got %d", len(sessions))
+		}
+
+		var registered model.Node
+		db.Where("node_id = ?", "node-003").First(&registered)
+		w2 := httptest.NewRecorder()
+		c2, _ := gin.CreateTestContext(w2)
+		body2 := `{"node_id":"node-003","name":"multi-port-node","serial_ports":[{"port_name":"/dev/ttyUSB0","status":"online"}],"sessions":[]}`
+		c2.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body2))
+		c2.Request.Header.Set("Content-Type", "application/json")
+		c2.Request.Header.Set("Authorization", "Bearer "+registered.Token)
+		handler.Report(c2)
+		var remaining int64
+		db.Model(&model.SerialPort{}).Where("node_id = ?", "node-003").Count(&remaining)
+		if remaining != 1 {
+			t.Errorf("expected stale port cleanup to leave 1 port, got %d", remaining)
 		}
 	})
 }

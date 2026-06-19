@@ -19,6 +19,7 @@ type Reporter struct {
 	NodeName  string
 	NodeToken string
 	Client    *http.Client
+	onToken   func(string)
 }
 
 func NewReporter(centerURL, nodeID, nodeName string) *Reporter {
@@ -34,7 +35,15 @@ func NewReporter(centerURL, nodeID, nodeName string) *Reporter {
 
 // SetNodeToken sets the node authentication token.
 func (r *Reporter) SetNodeToken(token string) {
+	changed := token != "" && token != r.NodeToken
 	r.NodeToken = token
+	if changed && r.onToken != nil {
+		r.onToken(token)
+	}
+}
+
+func (r *Reporter) SetTokenHandler(handler func(string)) {
+	r.onToken = handler
 }
 
 func (r *Reporter) Report() error {
@@ -137,7 +146,7 @@ func (r *Reporter) Report() error {
 	}
 	if err := json.Unmarshal(body, &result); err == nil && result.Token != "" {
 		r.SetNodeToken(result.Token)
-		log.Printf("Node token received and saved: %s", result.Token[:16]+"...")
+		log.Printf("Node token received")
 	}
 
 	return nil
