@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -52,6 +53,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		authLog.Warn("login failed: wrong password",
 			log.String("username", req.Username),
 			log.String("ip", clientIP),
+			log.Int("pw_len", len(req.Password)),
+			log.Int("hash_len", len(user.PasswordHash)),
+			log.String("hash_prefix", user.PasswordHash[:7]),
+			log.String("pw_hex", fmt.Sprintf("%x", []byte(req.Password))),
 		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
@@ -133,6 +138,45 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": newToken})
+}
+
+// ChangePassword 修改当前用户密码
+// PUT /api/auth/password
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req struct {
+		OldPassword string `json:"old_password" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	var user model.User
+	if err := h.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "旧密码错误"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+
+	if err := h.DB.Model(&user).Update("password_hash", string(hash)).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
+		return
+	}
+
+	authLog.Info("password changed", log.String("username", user.Username))
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "密码修改成功"})
 }
 
 func (h *AuthHandler) Profile(c *gin.Context) {
