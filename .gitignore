@@ -8,6 +8,10 @@ web/node_modules/
 *.dll
 *.so
 *.dylib
+# Go build outputs
+center
+hubterm-agent
+hubterm-center
 
 # Test
 *.test
