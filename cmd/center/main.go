@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/coolleng2525/hubterm/internal/center/handler"
@@ -77,7 +81,7 @@ func main() {
 		c.Next()
 	})
 
-	// handlers
+// handlers
 	authH := &handler.AuthHandler{DB: model.GetDB()}
 	nodeH := &handler.NodeHandler{DB: model.GetDB()}
 	portH := &handler.SerialPortHandler{DB: model.GetDB()}
@@ -87,6 +91,15 @@ func main() {
 	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
 	deviceSvc := service.NewDeviceService(model.GetDB())
 	aiH := handler.NewAIHandler(model.GetDB(), deviceSvc, agentWSH)
+
+	// P4-P6 handlers
+	topoH := handler.NewTopologyHandler(model.GetDB())
+	aliasH := handler.NewAliasHandler(model.GetDB())
+	proxyH := handler.NewProxyHandler(model.GetDB())
+	centerH := handler.NewRemoteCenterHandler(model.GetDB())
+	devMgmtH := handler.NewDeviceMgmtHandler(model.GetDB())
+	batchH := handler.NewBatchHandler(model.GetDB(), agentWSH)
+	groupH := handler.NewGroupHandler(model.GetDB(), agentWSH)
 
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
@@ -101,6 +114,7 @@ func main() {
 	{
 		api.GET("/auth/profile", authH.Profile)
 		api.POST("/auth/refresh", authH.RefreshToken)
+		api.PUT("/auth/password", authH.ChangePassword)
 
 		api.GET("/nodes", nodeH.List)
 		api.GET("/nodes/:id", nodeH.Get)
@@ -138,6 +152,55 @@ func main() {
 			v1.GET("/devices/:id/exec/:cmd_id", aiH.GetResult)
 			v1.POST("/scripts", aiH.UploadAndExecute)
 		}
+
+		// P4 — 拓扑
+		api.GET("/topology", topoH.GetTopology)
+		api.GET("/topology/nodes/:id", topoH.GetNodeTopology)
+		api.GET("/topology/route", topoH.FindRoute)
+		api.GET("/topology/health", topoH.CheckHealth)
+		api.POST("/topology/heal", topoH.Heal)
+		api.GET("/topology/graph", topoH.GetGraph)
+
+		// P5 — 别名
+		api.GET("/aliases", aliasH.List)
+		api.POST("/aliases", aliasH.Create)
+		api.DELETE("/aliases/:id", aliasH.Delete)
+		api.GET("/aliases/resolve", aliasH.Resolve)
+
+		// P5 — 代理
+		api.POST("/proxy/connect", proxyH.Connect)
+		api.POST("/proxy/disconnect/:session_id", proxyH.Disconnect)
+		api.GET("/proxy/sessions", proxyH.ListSessions)
+
+		// P5 — 远程中心
+		api.GET("/centers", centerH.List)
+		api.GET("/centers/:id", centerH.Get)
+		api.POST("/centers", centerH.Create)
+		api.PUT("/centers/:id", centerH.Update)
+		api.DELETE("/centers/:id", centerH.Delete)
+		api.POST("/centers/:id/sync", centerH.Sync)
+
+		// P6 — 设备管理
+		api.GET("/devices", devMgmtH.List)
+		api.POST("/devices", devMgmtH.Create)
+		api.PUT("/devices/:id", devMgmtH.Update)
+		api.DELETE("/devices/:id", devMgmtH.Delete)
+		api.PATCH("/devices/:id/tags", devMgmtH.UpdateTags)
+		api.PATCH("/devices/:id/capabilities", devMgmtH.UpdateCapabilities)
+
+		// P6 — 批量命令
+		api.POST("/batch/exec", batchH.Exec)
+		api.GET("/batch/exec/:batch_id", batchH.GetResult)
+
+		// P6 — 设备分组
+		api.GET("/groups", groupH.ListGroups)
+		api.GET("/groups/:id", groupH.GetGroup)
+		api.POST("/groups", groupH.CreateGroup)
+		api.PUT("/groups/:id", groupH.UpdateGroup)
+		api.DELETE("/groups/:id", groupH.DeleteGroup)
+		api.POST("/groups/:id/members", groupH.AddMember)
+		api.DELETE("/groups/:id/members/:device_id", groupH.RemoveMember)
+		api.POST("/groups/:id/exec", groupH.ExecOnGroup)
 	}
 
 	// WebSocket — browser clients
@@ -167,8 +230,32 @@ func main() {
 	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
 
 	addr := cfg.Server.Addr()
-	mainLog.Info("Center service starting on "+addr, log.String("addr", addr))
-	if err := r.Run(addr); err != nil {
-		mainLog.Error("failed to start", log.Err(err))
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
 	}
+
+	// Graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		mainLog.Info("Center service starting on "+addr, log.String("addr", addr))
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			mainLog.Error("failed to start", log.Err(err))
+		}
+	}()
+
+	sig := <-sigCh
+	mainLog.Info("received shutdown signal", log.String("signal", sig.String()))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		mainLog.Error("forced shutdown", log.Err(err))
+	}
+
+	mainLog.Info("center service stopped")
 }

@@ -77,7 +77,61 @@ type AuditLog struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// DeviceAlias 虚拟设备名 — hubterm://xxx 到真实设备的映射
+type DeviceAlias struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Alias     string    `gorm:"uniqueIndex;size:128;not null" json:"alias"` // hubterm://ap-03
+	DeviceID  string    `gorm:"size:64;not null" json:"device_id"`
+	NodeID    string    `gorm:"size:64" json:"node_id"`
+	Protocol  string    `gorm:"size:32" json:"protocol"` // serial/ssh
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// RemoteCenter 远程中心
+type RemoteCenter struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:128" json:"name"`
+	URL       string    `gorm:"size:256;not null" json:"url"`
+	Token     string    `gorm:"size:256" json:"token"`
+	Status    string    `gorm:"size:32;default:unknown" json:"status"`
+	LastSync  time.Time `json:"last_sync"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// DeviceGroup 设备分组
+type DeviceGroup struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:128;not null" json:"name"`
+	Desc      string    `gorm:"size:256" json:"desc"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// DeviceGroupMember 设备组成员
+type DeviceGroupMember struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	GroupID  uint   `gorm:"index;not null" json:"group_id"`
+	DeviceID string `gorm:"size:64;not null" json:"device_id"`
+}
+
+// BatchResult 批量命令执行结果
+type BatchResult struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	BatchID   string    `gorm:"uniqueIndex;size:64;not null" json:"batch_id"`
+	NodeID    string    `gorm:"size:64;not null" json:"node_id"`
+	Command   string    `gorm:"size:1024" json:"command"`
+	Stdout    string    `gorm:"type:text" json:"stdout"`
+	Stderr    string    `gorm:"type:text" json:"stderr"`
+	ExitCode  int       `json:"exit_code"`
+	Status    string    `gorm:"size:32;default:pending" json:"status"` // pending/running/completed/failed
+	StartedAt time.Time `json:"started_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{}, &Script{}, &ScriptResult{}, &Device{})
+	return db.AutoMigrate(
+		&User{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
+		&Script{}, &ScriptResult{}, &Device{},
+		&DeviceAlias{}, &RemoteCenter{}, &DeviceGroup{}, &DeviceGroupMember{}, &BatchResult{},
+	)
 }
