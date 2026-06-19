@@ -31,6 +31,8 @@ go run main.go
 
 中心服务监听 `:8080`。首次启动自动创建 admin 用户，密码从环境变量 `ADMIN_PASSWORD` 读取，未设置则生成随机密码打印到日志。
 
+登录后可通过 API 修改密码：`PUT /api/auth/password`，传 `{"old_password":"...","new_password":"..."}`。
+
 ### 启动节点代理
 
 ```bash
