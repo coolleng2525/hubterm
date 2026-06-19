@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -53,10 +52,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		authLog.Warn("login failed: wrong password",
 			log.String("username", req.Username),
 			log.String("ip", clientIP),
-			log.Int("pw_len", len(req.Password)),
-			log.Int("hash_len", len(user.PasswordHash)),
-			log.String("hash_prefix", user.PasswordHash[:7]),
-			log.String("pw_hex", fmt.Sprintf("%x", []byte(req.Password))),
 		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return

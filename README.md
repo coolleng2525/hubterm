@@ -125,6 +125,9 @@ hubterm/
 
 ## 参考与致谢
 
+登录返回 401 或修改 `ADMIN_PASSWORD` 后仍无法登录时，参见
+[Admin 登录故障排查](docs/troubleshooting-admin-login.md)。
+
 HubTerm 站在巨人的肩膀上，参考/集成了以下开源项目：
 
 | 项目 | 用途 | 协议 |

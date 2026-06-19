@@ -9,9 +9,9 @@ web/node_modules/
 *.so
 *.dylib
 # Go build outputs
-center
-hubterm-agent
-hubterm-center
+/center
+/hubterm-agent
+/hubterm-center
 
 # Test
 *.test
