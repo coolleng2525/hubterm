@@ -53,6 +53,7 @@ func (r *Reporter) Report() error {
 	}
 
 	ports := collector.ScanSerialPorts()
+	shells := collector.ScanShells()
 
 	report := hubtermproto.NodeReport{
 		NodeID:        r.NodeID,
@@ -71,6 +72,10 @@ func (r *Reporter) Report() error {
 		Interfaces:    make([]hubtermproto.NetworkInterfaceInfo, 0),
 		SerialPorts:   make([]hubtermproto.SerialPortInfo, len(ports)),
 		Sessions:      []hubtermproto.SessionInfo{},
+		Shells:        make([]hubtermproto.ShellInfo, len(shells)),
+	}
+	for i, shell := range shells {
+		report.Shells[i] = hubtermproto.ShellInfo{ID: shell.ID, Name: shell.Name, Path: shell.Path}
 	}
 
 	// ser2net 检测

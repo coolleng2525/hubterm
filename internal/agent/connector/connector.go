@@ -22,6 +22,10 @@ type CenterCommand struct {
 		Command   string `json:"command,omitempty"`
 		Timeout   int    `json:"timeout,omitempty"` // 秒
 		SessionID string `json:"session_id,omitempty"`
+		Data      string `json:"data,omitempty"`
+		Shell     string `json:"shell,omitempty"`
+		Rows      int    `json:"rows,omitempty"`
+		Cols      int    `json:"cols,omitempty"`
 	} `json:"payload,omitempty"`
 }
 
@@ -148,12 +152,16 @@ func (c *Connector) connectOnce() error {
 		switch msg.Type {
 		case "ping":
 			c.sendPong()
-		case "exec":
+		case "exec", "shell_start", "write", "shell_close", "resize":
 			c.handleExecCommand(msg.Data)
 		default:
 			log.Printf("[connector] unknown message type: %s", msg.Type)
 		}
 	}
+}
+
+func (c *Connector) SendTerminalData(sessionID, direction, data string) error {
+	return c.writeJSON(hubtermproto.WSMessage{Type: "terminal_data", Data: hubtermproto.TerminalData{SessionID: sessionID, Direction: direction, Data: data}})
 }
 
 // SendReport 发送节点上报数据到中心

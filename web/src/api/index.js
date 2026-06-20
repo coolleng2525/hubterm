@@ -89,3 +89,7 @@ export function getAuditLogs(params) {
 export function sendCommand(nodeId, command, params) {
   return api.post(`/nodes/${nodeId}/command`, { command, params })
 }
+
+export function startLocalShell(nodeId, shell, rows = 24, cols = 100) {
+  return api.post(`/nodes/${nodeId}/shell`, { shell, rows, cols })
+}

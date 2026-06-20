@@ -112,6 +112,8 @@ func main() {
 		api.GET("/nodes/:id", nodeH.Get)
 		api.POST("/nodes/:id/command", middleware.OperatorRequired(), nodeH.Command)
 		api.POST("/nodes/:id/exec", middleware.OperatorRequired(), nodeH.ExecCommand)
+		api.POST("/nodes/:id/shell", middleware.OperatorRequired(), nodeH.StartLocalShell)
+		api.DELETE("/nodes/:id/shell/:session_id", middleware.OperatorRequired(), nodeH.CloseLocalShell)
 		api.GET("/nodes/:id/exec/:cmd_id", middleware.OperatorRequired(), nodeH.GetExecResult)
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
 

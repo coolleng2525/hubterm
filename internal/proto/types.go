@@ -26,6 +26,13 @@ type NodeReport struct {
 	SerialPorts   []SerialPortInfo       `json:"serial_ports"`
 	Sessions      []SessionInfo          `json:"sessions"`
 	Ser2net       *Ser2netStatus         `json:"ser2net,omitempty"`
+	Shells        []ShellInfo            `json:"shells,omitempty"`
+}
+
+type ShellInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 // Ser2netStatus ser2net 安装和运行状态
@@ -109,6 +116,9 @@ type ExecCommand struct {
 		Timeout   int    `json:"timeout,omitempty"` // 秒
 		SessionID string `json:"session_id,omitempty"`
 		Data      string `json:"data,omitempty"`
+		Shell     string `json:"shell,omitempty"`
+		Rows      int    `json:"rows,omitempty"`
+		Cols      int    `json:"cols,omitempty"`
 	} `json:"payload,omitempty"`
 }
 

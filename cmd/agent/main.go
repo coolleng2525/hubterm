@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,9 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coolleng2525/hubterm/internal/agent/collector"
 	"github.com/coolleng2525/hubterm/internal/agent/connector"
 	"github.com/coolleng2525/hubterm/internal/agent/discovery"
 	"github.com/coolleng2525/hubterm/internal/agent/executor"
+	"github.com/coolleng2525/hubterm/internal/agent/localshell"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
 	"github.com/coolleng2525/hubterm/internal/agent/service"
 	"github.com/coolleng2525/hubterm/internal/pkg/session"
@@ -135,11 +138,41 @@ func main() {
 
 	// 建立 WebSocket 连接
 	// 注册命令处理器
+	shellManager := localshell.NewManager()
 	conn.SetCommandHandler(func(cmd *connector.CenterCommand) {
 		log.Printf("Received command: id=%s type=%s command=%s",
 			cmd.ID, cmd.Type, cmd.Payload.Command)
 
 		switch cmd.Type {
+		case "shell_start":
+			var shellPath string
+			for _, shell := range collector.ScanShells() {
+				if shell.ID == cmd.Payload.Shell {
+					shellPath = shell.Path
+					break
+				}
+			}
+			if shellPath == "" {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte("Shell is not installed\r\n")))
+				return
+			}
+			err := shellManager.Start(cmd.Payload.SessionID, cmd.Payload.Shell, shellPath, func(data []byte) {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString(data))
+			}, func(err error) {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte("\r\nShell exited\r\n")))
+			})
+			if err != nil {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte(err.Error()+"\r\n")))
+			}
+		case "write":
+			data, err := base64.StdEncoding.DecodeString(cmd.Payload.Data)
+			if err == nil {
+				_ = shellManager.Write(cmd.Payload.SessionID, data)
+			}
+		case "shell_close":
+			shellManager.Close(cmd.Payload.SessionID)
+		case "resize":
+			// Pipe-based fallback has no terminal resize; ConPTY can implement this later.
 		case "exec":
 			timeout := time.Duration(cmd.Payload.Timeout) * time.Second
 			if timeout <= 0 {

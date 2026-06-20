@@ -14,6 +14,10 @@
           <el-button type="primary" size="small" :disabled="node.status !== 'online'" @click="openSSH">
             SSH 终端
           </el-button>
+          <el-select v-if="shells.length" v-model="selectedShell" size="small" style="width:170px;margin-left:8px">
+            <el-option v-for="shell in shells" :key="shell.id" :label="shell.name" :value="shell.id" />
+          </el-select>
+          <el-button v-if="shells.length" type="success" size="small" style="margin-left:8px" @click="openLocalShell">本机终端</el-button>
         </div>
       </template>
       <el-descriptions :column="3" border size="small">
@@ -84,16 +88,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getNode, kickSession, assignMaster } from '../api'
+import { getNode, kickSession, assignMaster, startLocalShell } from '../api'
 
 const route = useRoute()
 const router = useRouter()
 const node = ref(null)
 const ports = ref([])
 const sessions = ref([])
+const selectedShell = ref('')
+const shells = computed(() => { try { return JSON.parse(node.value?.shells || '[]') } catch { return [] } })
 
 async function fetchNode() {
   try {
@@ -101,6 +107,7 @@ async function fetchNode() {
     node.value = res.data.node
     ports.value = res.data.ports
     sessions.value = res.data.sessions
+    if (!selectedShell.value && shells.value.length) selectedShell.value = shells.value[0].id
   } catch (e) {
     console.error(e)
   }
@@ -113,6 +120,15 @@ function formatTime(t) {
 
 function openSSH() {
   router.push(`/terminal/${node.value.node_id}`)
+}
+
+async function openLocalShell() {
+  try {
+    const response = await startLocalShell(node.value.node_id, selectedShell.value)
+    router.push(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '无法启动本机终端')
+  }
 }
 
 function openSharedTerminal(session) {

@@ -51,6 +51,7 @@ type Node struct {
 	DiskTotal     uint64    `json:"disk_total"`
 	DiskUsed      uint64    `json:"disk_used"`
 	Interfaces    string    `gorm:"size:1024" json:"interfaces"` // JSON: [{"name":"eth0","ip":"192.168.1.55"}]
+	Shells        string    `gorm:"size:4096" json:"shells"`
 	LastSeen      time.Time `json:"last_seen"`
 	Token         string    `gorm:"size:128" json:"-"`
 	CreatedAt     time.Time `json:"created_at"`

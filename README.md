@@ -42,6 +42,8 @@ go run main.go --center http://localhost:8080
 
 节点代理每 3 秒向中心上报系统状态和串口信息。
 
+Windows Agent 还会探测并上报本机可用 Shell。节点详情页可直接启动 CMD、Windows PowerShell、PowerShell 7 或 Git Bash，无需在 Windows 上启用 SSH。详见 [Windows 本机终端](docs/windows-local-shell.md)。
+
 ### 启动前端
 
 ```bash
@@ -109,6 +111,8 @@ hubterm/
 | GET | /api/nodes/:id | 节点详情 |
 | POST | /api/nodes/report | 节点上报 |
 | POST | /api/nodes/:id/command | 下发指令 |
+| POST | /api/nodes/:id/shell | 启动节点本机 Shell 会话（admin/operator） |
+| DELETE | /api/nodes/:id/shell/:session_id | 关闭节点本机 Shell 会话（admin/operator） |
 | GET | /api/serial-ports | 串口列表 |
 | GET | /api/sessions | 会话列表 |
 | POST | /api/sessions/:id/kick | 踢掉会话 |

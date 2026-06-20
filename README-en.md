@@ -40,6 +40,8 @@ go run main.go --center http://localhost:8080
 
 Agent reports system status and serial port info every 3 seconds.
 
+On Windows, the agent also detects available local shells. The node detail page can start CMD, Windows PowerShell, PowerShell 7, or Git Bash without enabling SSH on the Windows host. See [Windows local terminals](docs/windows-local-shell.md).
+
 ### Start Frontend
 
 ```bash
@@ -105,6 +107,8 @@ hubterm/
 | GET | /api/nodes/:id | Node detail |
 | POST | /api/nodes/report | Node report |
 | POST | /api/nodes/:id/command | Send command |
+| POST | /api/nodes/:id/shell | Start a node-local shell session (admin/operator) |
+| DELETE | /api/nodes/:id/shell/:session_id | Close a node-local shell session (admin/operator) |
 | GET | /api/serial-ports | Serial port list |
 | GET | /api/sessions | Session list |
 | POST | /api/sessions/:id/kick | Kick session |

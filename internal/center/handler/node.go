@@ -158,6 +158,9 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	node.MemoryPercent = report.MemoryPercent
 	node.DiskTotal = report.DiskTotal
 	node.DiskUsed = report.DiskUsed
+	if shellJSON, err := json.Marshal(report.Shells); err == nil {
+		node.Shells = string(shellJSON)
+	}
 
 	// 序列化网卡信息
 	if len(report.Interfaces) > 0 {

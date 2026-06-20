@@ -23,8 +23,9 @@ import (
 type AgentWSHandler struct {
 	DB *gorm.DB
 
-	mu         sync.RWMutex
-	agentConns map[string]*agentConnection // nodeID -> connection
+	mu            sync.RWMutex
+	agentConns    map[string]*agentConnection // nodeID -> connection
+	localSessions map[string]string           // sessionID -> nodeID
 }
 
 // agentConnection 表示一个 agent 的 WebSocket 连接
@@ -39,8 +40,9 @@ var agentWSLog = log.New("agent_ws")
 // NewAgentWSHandler 创建 agent WebSocket 处理器
 func NewAgentWSHandler(db *gorm.DB) *AgentWSHandler {
 	return &AgentWSHandler{
-		DB:         db,
-		agentConns: make(map[string]*agentConnection),
+		DB:            db,
+		agentConns:    make(map[string]*agentConnection),
+		localSessions: make(map[string]string),
 	}
 }
 
@@ -239,10 +241,38 @@ func validTerminalInput(input hubtermproto.TerminalInput) bool {
 }
 
 func (h *AgentWSHandler) ownsSession(nodeID, sessionID string) bool {
+	h.mu.RLock()
+	owner := h.localSessions[sessionID]
+	h.mu.RUnlock()
+	if owner == nodeID {
+		return true
+	}
 	var count int64
 	return h.DB.Model(&model.Session{}).
 		Where("node_id = ? AND session_id = ?", nodeID, sessionID).
 		Count(&count).Error == nil && count == 1
+}
+
+func (h *AgentWSHandler) StartLocalShell(nodeID, shellID, sessionID string, rows, cols int) error {
+	cmd := hubtermproto.ExecCommand{ID: uuid.New().String(), Type: "shell_start"}
+	cmd.Payload.SessionID, cmd.Payload.Shell, cmd.Payload.Rows, cmd.Payload.Cols = sessionID, shellID, rows, cols
+	if err := h.sendCommand(nodeID, cmd); err != nil {
+		return err
+	}
+	h.mu.Lock()
+	h.localSessions[sessionID] = nodeID
+	h.mu.Unlock()
+	return nil
+}
+
+func (h *AgentWSHandler) CloseLocalShell(nodeID, sessionID string) error {
+	cmd := hubtermproto.ExecCommand{ID: uuid.New().String(), Type: "shell_close"}
+	cmd.Payload.SessionID = sessionID
+	err := h.sendCommand(nodeID, cmd)
+	h.mu.Lock()
+	delete(h.localSessions, sessionID)
+	h.mu.Unlock()
+	return err
 }
 
 func (h *AgentWSHandler) SendTerminalInput(nodeID, sessionID, data string) error {
