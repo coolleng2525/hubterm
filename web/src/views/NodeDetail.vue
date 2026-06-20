@@ -11,13 +11,6 @@
               {{ node.status === 'online' ? '在线' : '离线' }}
             </el-tag>
           </div>
-          <el-button type="primary" size="small" :disabled="node.status !== 'online'" @click="openSSH">
-            SSH 终端
-          </el-button>
-          <el-select v-if="shells.length" v-model="selectedShell" size="small" style="width:170px;margin-left:8px">
-            <el-option v-for="shell in shells" :key="shell.id" :label="shell.name" :value="shell.id" />
-          </el-select>
-          <el-button v-if="shells.length" type="success" size="small" style="margin-left:8px" @click="openLocalShell">本机终端</el-button>
         </div>
       </template>
       <el-descriptions :column="3" border size="small">
@@ -30,6 +23,26 @@
         <el-descriptions-item label="磁盘">{{ (node.disk_used / 1024 / 1024 / 1024).toFixed(1) }}G / {{ (node.disk_total / 1024 / 1024 / 1024).toFixed(1) }}G</el-descriptions-item>
         <el-descriptions-item label="最后上报">{{ formatTime(node.last_seen) }}</el-descriptions-item>
       </el-descriptions>
+    </el-card>
+
+    <el-card v-if="node" style="margin-bottom:20px">
+      <template #header><span>连接方式</span></template>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <el-button type="primary" :disabled="node.status !== 'online'" @click="openSSH">
+          SSH 终端
+        </el-button>
+        <template v-if="shells.length">
+          <el-select v-model="selectedShell" style="width:190px">
+            <el-option v-for="shell in shells" :key="shell.id" :label="shell.name" :value="shell.id" />
+          </el-select>
+          <el-button type="success" :disabled="node.status !== 'online'" @click="openLocalShell">
+            本机终端
+          </el-button>
+        </template>
+        <span v-if="node.os === 'linux'" style="color:var(--el-text-color-secondary);font-size:13px">
+          连接 {{ node.ip }}:22
+        </span>
+      </div>
     </el-card>
 
     <el-card style="margin-bottom:20px">
