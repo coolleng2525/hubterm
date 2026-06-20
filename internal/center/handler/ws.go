@@ -22,8 +22,12 @@ var upgrader = websocket.Upgrader{
 		if origin == "" {
 			return true
 		}
-		u, err := url.Parse(origin)
-		return err == nil && strings.EqualFold(u.Host, r.Host)
+		originURL, err := url.Parse(origin)
+		if err != nil || originURL.Hostname() == "" {
+			return false
+		}
+		requestURL, err := url.Parse("http://" + r.Host)
+		return err == nil && strings.EqualFold(originURL.Hostname(), requestURL.Hostname())
 	},
 }
 

@@ -16,6 +16,23 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// SSHProfile stores a user's reusable SSH connection settings. Secrets are encrypted at rest.
+type SSHProfile struct {
+	ID                  uint      `gorm:"primaryKey" json:"id"`
+	UserID              uint      `gorm:"not null;index;uniqueIndex:idx_user_ssh_name" json:"-"`
+	Name                string    `gorm:"size:128;not null;uniqueIndex:idx_user_ssh_name" json:"name"`
+	NodeID              string    `gorm:"size:64;index" json:"node_id"`
+	Host                string    `gorm:"size:256;not null" json:"host"`
+	Port                int       `gorm:"not null;default:22" json:"port"`
+	Username            string    `gorm:"size:128;not null" json:"username"`
+	AuthType            string    `gorm:"size:16;not null" json:"auth_type"`
+	EncryptedPassword   string    `gorm:"type:text" json:"-"`
+	EncryptedPrivateKey string    `gorm:"type:text" json:"-"`
+	EncryptedPassphrase string    `gorm:"type:text" json:"-"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+}
+
 // Node 节点
 type Node struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
@@ -130,7 +147,7 @@ type BatchResult struct {
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&User{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
+		&User{}, &SSHProfile{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
 		&Script{}, &ScriptResult{}, &Device{},
 		&DeviceAlias{}, &RemoteCenter{}, &DeviceGroup{}, &DeviceGroupMember{}, &BatchResult{},
 	)

@@ -76,7 +76,8 @@ func main() {
 	portH := &handler.SerialPortHandler{DB: model.GetDB()}
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
 	agentWSH := handler.NewAgentWSHandler(model.GetDB())
-	terminalH := &handler.TerminalHandler{RecordingDir: "recordings"}
+	terminalH := &handler.TerminalHandler{RecordingDir: "recordings", DB: model.GetDB()}
+	sshProfileH := &handler.SSHProfileHandler{DB: model.GetDB()}
 	nodeH := &handler.NodeHandler{DB: model.GetDB(), AgentWS: agentWSH}
 	sessionH := &handler.SessionHandler{DB: model.GetDB(), AgentWS: agentWSH}
 	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
@@ -115,6 +116,10 @@ func main() {
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
 
 		api.GET("/serial-ports", portH.List)
+		api.GET("/ssh-profiles", sshProfileH.List)
+		api.POST("/ssh-profiles", middleware.OperatorRequired(), sshProfileH.Create)
+		api.PUT("/ssh-profiles/:id", middleware.OperatorRequired(), sshProfileH.Update)
+		api.DELETE("/ssh-profiles/:id", middleware.OperatorRequired(), sshProfileH.Delete)
 
 		api.GET("/sessions", sessionH.List)
 		api.POST("/sessions/:id/kick", middleware.OperatorRequired(), sessionH.Kick)
@@ -210,7 +215,7 @@ func main() {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "operator required"})
 			return
 		}
-		terminalH.HandleTerminal(c)
+		terminalH.HandleTerminal(c, claims.UserID)
 	})
 	r.GET("/api/v1/terminal/monitor/:session_id", func(c *gin.Context) {
 		if _, err := handler.AuthenticateWebSocket(c.Request); err != nil {

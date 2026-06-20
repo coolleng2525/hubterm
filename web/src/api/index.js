@@ -51,6 +51,22 @@ export function getSerialPorts(nodeId) {
   return api.get('/serial-ports', { params })
 }
 
+export function getSSHProfiles(nodeId) {
+  return api.get('/ssh-profiles', { params: nodeId ? { node_id: nodeId } : {} })
+}
+
+export function createSSHProfile(data) {
+  return api.post('/ssh-profiles', data)
+}
+
+export function updateSSHProfile(id, data) {
+  return api.put(`/ssh-profiles/${id}`, data)
+}
+
+export function deleteSSHProfile(id) {
+  return api.delete(`/ssh-profiles/${id}`)
+}
+
 export function getSessions(nodeId, portName) {
   const params = {}
   if (nodeId) params.node_id = nodeId

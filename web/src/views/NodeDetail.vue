@@ -4,10 +4,17 @@
 
     <el-card v-if="node" style="margin-bottom:20px">
       <template #header>
-        <span>{{ node.name || node.hostname }} ({{ node.ip }})</span>
-        <el-tag :type="node.status === 'online' ? 'success' : 'info'" size="small" style="margin-left:10px">
-          {{ node.status === 'online' ? '在线' : '离线' }}
-        </el-tag>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <span>{{ node.name || node.hostname }} ({{ node.ip }})</span>
+            <el-tag :type="node.status === 'online' ? 'success' : 'info'" size="small" style="margin-left:10px">
+              {{ node.status === 'online' ? '在线' : '离线' }}
+            </el-tag>
+          </div>
+          <el-button type="primary" size="small" :disabled="node.status !== 'online'" @click="openSSH">
+            SSH 终端
+          </el-button>
+        </div>
       </template>
       <el-descriptions :column="3" border size="small">
         <el-descriptions-item label="节点ID"><code>{{ node.node_id }}</code></el-descriptions-item>
@@ -36,11 +43,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="baud_rate" label="波特率" width="80" />
-        <el-table-column label="操作" width="120">
-          <template #default="{ row }">
-			<el-button type="primary" link size="small" @click="openTerminal(row)">SSH终端</el-button>
-          </template>
-        </el-table-column>
       </el-table>
     </el-card>
 
@@ -109,8 +111,8 @@ function formatTime(t) {
   return new Date(t).toLocaleString('zh-CN')
 }
 
-function openTerminal(port) {
-  router.push(`/terminal/${node.value.node_id}/${port.port_name}`)
+function openSSH() {
+  router.push(`/terminal/${node.value.node_id}`)
 }
 
 function openSharedTerminal(session) {

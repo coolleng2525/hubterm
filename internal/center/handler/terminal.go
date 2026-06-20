@@ -20,9 +20,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/ssh"
+	"gorm.io/gorm"
 
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
 	"github.com/coolleng2525/hubterm/internal/pkg/recorder"
+	"github.com/coolleng2525/hubterm/internal/pkg/securestore"
 	"github.com/coolleng2525/hubterm/internal/pkg/session"
 	"github.com/coolleng2525/hubterm/internal/pkg/sshclient"
 	"github.com/coolleng2525/hubterm/internal/pkg/tunnel"
@@ -40,6 +42,7 @@ const (
 // TerminalHandler handles WebSocket-based terminal connections.
 type TerminalHandler struct {
 	RecordingDir string // base directory for session recordings
+	DB           *gorm.DB
 }
 
 var terminalLog = log.New("terminal")
@@ -47,6 +50,7 @@ var terminalLog = log.New("terminal")
 // TerminalConnectRequest describes the parameters needed to establish
 // a terminal connection.
 type TerminalConnectRequest struct {
+	ProfileID   uint   `json:"profile_id,omitempty"`
 	SessionID   string `json:"session_id"`           // unique session identifier
 	Protocol    string `json:"protocol"`             // ssh / serial / telnet
 	IP          string `json:"ip"`                   // target IP
@@ -81,7 +85,7 @@ type TerminalConnectRequest struct {
 //  9. On disconnect, clean up session and close tunnel
 //
 // POST /api/v1/terminal/connect
-func (h *TerminalHandler) HandleTerminal(c *gin.Context) {
+func (h *TerminalHandler) HandleTerminal(c *gin.Context, userID uint) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		terminalLog.Error("ws upgrade error", log.Err(err))
@@ -105,6 +109,30 @@ func (h *TerminalHandler) HandleTerminal(c *gin.Context) {
 	if req.SessionID == "" {
 		writeWSError(ws, "session_id is required")
 		return
+	}
+
+	if req.ProfileID != 0 {
+		profile, err := loadSSHProfile(h.DB, req.ProfileID, userID)
+		if err != nil {
+			writeWSError(ws, "SSH profile not found")
+			return
+		}
+		req.IP, req.Port, req.Username = profile.Host, profile.Port, profile.Username
+		req.Password, err = securestore.Decrypt(profile.EncryptedPassword)
+		if err != nil {
+			writeWSError(ws, "decrypt SSH credentials")
+			return
+		}
+		req.PrivateKey, err = securestore.Decrypt(profile.EncryptedPrivateKey)
+		if err != nil {
+			writeWSError(ws, "decrypt SSH credentials")
+			return
+		}
+		req.Passphrase, err = securestore.Decrypt(profile.EncryptedPassphrase)
+		if err != nil {
+			writeWSError(ws, "decrypt SSH credentials")
+			return
+		}
 	}
 
 	if req.TermType == "" {

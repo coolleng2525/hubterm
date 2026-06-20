@@ -1,11 +1,8 @@
 package collector
 
 import (
-	"fmt"
 	"net"
-	"os"
 	"runtime"
-	"strings"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -131,43 +128,5 @@ type SerialPortInfo struct {
 }
 
 func ScanSerialPorts() []SerialPortInfo {
-	var ports []SerialPortInfo
-
-	switch runtime.GOOS {
-	case "linux":
-		entries, _ := os.ReadDir("/dev")
-		for _, e := range entries {
-			name := e.Name()
-			if strings.HasPrefix(name, "ttyUSB") || strings.HasPrefix(name, "ttyACM") || strings.HasPrefix(name, "ttyS") {
-				ports = append(ports, SerialPortInfo{
-					PortName: fmt.Sprintf("/dev/%s", name),
-					Status:   "online",
-					BaudRate: 115200,
-				})
-			}
-		}
-	case "darwin":
-		entries, _ := os.ReadDir("/dev")
-		for _, e := range entries {
-			name := e.Name()
-			if strings.HasPrefix(name, "tty.") || strings.HasPrefix(name, "cu.") {
-				ports = append(ports, SerialPortInfo{
-					PortName: fmt.Sprintf("/dev/%s", name),
-					Status:   "online",
-					BaudRate: 115200,
-				})
-			}
-		}
-	case "windows":
-		for i := 1; i <= 256; i++ {
-			portName := fmt.Sprintf("COM%d", i)
-			ports = append(ports, SerialPortInfo{
-				PortName: portName,
-				Status:   "online",
-				BaudRate: 115200,
-			})
-		}
-	}
-
-	return ports
+	return scanSerialPorts()
 }

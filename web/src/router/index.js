@@ -22,7 +22,7 @@ const routes = [
       { path: 'nodes/:id', name: 'NodeDetail', component: NodeDetail },
       { path: 'sessions', name: 'Sessions', component: Sessions },
       { path: 'audit-logs', name: 'AuditLogs', component: AuditLogs },
-      { path: 'terminal/:nodeId/:portName', name: 'Terminal', component: Terminal },
+      { path: 'terminal/:nodeId/:portName?', name: 'Terminal', component: Terminal },
       { path: 'shared-terminal/:nodeId/:sessionId', name: 'SharedTerminal', component: SharedTerminal },
     ],
   },
