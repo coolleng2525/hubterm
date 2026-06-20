@@ -193,7 +193,7 @@ func main() {
 
 	// WebSocket — browser clients
 	r.GET("/api/ws", func(c *gin.Context) {
-		handler.HandleWS(c.Request, c.Writer)
+		handler.HandleWS(c.Request, c.Writer, agentWSH)
 	})
 
 	// WebSocket — agent connections

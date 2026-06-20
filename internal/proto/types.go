@@ -82,6 +82,24 @@ type WSMessage struct {
 	Data interface{} `json:"data"`
 }
 
+// TerminalData carries terminal bytes between an agent and center.
+type TerminalData struct {
+	SessionID string `json:"session_id"`
+	Direction string `json:"direction"` // input / output
+	Data      string `json:"data"`      // base64 encoded bytes
+}
+
+type TerminalSubscription struct {
+	NodeID    string `json:"node_id"`
+	SessionID string `json:"session_id"`
+}
+
+type TerminalInput struct {
+	NodeID    string `json:"node_id"`
+	SessionID string `json:"session_id"`
+	Data      string `json:"data"` // base64 encoded bytes
+}
+
 // ExecCommand 中心下发的命令执行请求
 type ExecCommand struct {
 	ID      string `json:"id"`
@@ -90,6 +108,7 @@ type ExecCommand struct {
 		Command   string `json:"command,omitempty"`
 		Timeout   int    `json:"timeout,omitempty"` // 秒
 		SessionID string `json:"session_id,omitempty"`
+		Data      string `json:"data,omitempty"`
 	} `json:"payload,omitempty"`
 }
 

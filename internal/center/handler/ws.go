@@ -11,6 +11,7 @@ import (
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
 	"github.com/gorilla/websocket"
 )
 
@@ -39,17 +40,41 @@ func AuthenticateWebSocket(r *http.Request) (*middleware.Claims, error) {
 	return nil, fmt.Errorf("missing websocket token")
 }
 
+type browserClient struct {
+	conn      *websocket.Conn
+	writeMu   sync.Mutex
+	subMu     sync.RWMutex
+	nodeID    string
+	sessionID string
+}
+
+func (c *browserClient) writeJSON(value interface{}) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	return c.conn.WriteJSON(value)
+}
+
+func (c *browserClient) subscribe(nodeID, sessionID string) {
+	c.subMu.Lock()
+	c.nodeID, c.sessionID = nodeID, sessionID
+	c.subMu.Unlock()
+}
+
+func (c *browserClient) matches(nodeID, sessionID string) bool {
+	c.subMu.RLock()
+	defer c.subMu.RUnlock()
+	return c.nodeID == nodeID && c.sessionID == sessionID
+}
+
 var (
-	wsClients   = make(map[*websocket.Conn]bool)
+	wsClients   = make(map[*websocket.Conn]*browserClient)
 	wsClientsMu sync.RWMutex
 )
 
 var wsLog = log.New("ws")
 
-// HandleWS handles WebSocket connections with token authentication.
-// FIXED: Token is validated via URL query parameter.
-func HandleWS(r *http.Request, w http.ResponseWriter) {
-	// FIXED: Validate token from URL query parameter
+// HandleWS handles authenticated browser WebSocket connections.
+func HandleWS(r *http.Request, w http.ResponseWriter, agentWS *AgentWSHandler) {
 	claims, err := AuthenticateWebSocket(r)
 	if err != nil {
 		wsLog.Warn("ws auth failed", log.String("reason", err.Error()))
@@ -62,60 +87,101 @@ func HandleWS(r *http.Request, w http.ResponseWriter) {
 		wsLog.Error("ws upgrade error", log.Err(err))
 		return
 	}
-
+	client := &browserClient{conn: conn}
 	wsClientsMu.Lock()
-	wsClients[conn] = true
+	wsClients[conn] = client
 	wsClientsMu.Unlock()
-
-	wsLog.Info("ws connected",
-		log.String("username", claims.Username),
-		log.String("user_id", string(rune(claims.UserID))),
-	)
 
 	defer func() {
 		wsClientsMu.Lock()
 		delete(wsClients, conn)
 		wsClientsMu.Unlock()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
+		var msg hubtermproto.WSMessage
+		if err := conn.ReadJSON(&msg); err != nil {
 			break
+		}
+		raw, err := json.Marshal(msg.Data)
+		if err != nil {
+			continue
+		}
+		switch msg.Type {
+		case "terminal_subscribe":
+			var sub hubtermproto.TerminalSubscription
+			if json.Unmarshal(raw, &sub) == nil && sub.NodeID != "" && sub.SessionID != "" {
+				client.subscribe(sub.NodeID, sub.SessionID)
+				_ = client.writeJSON(hubtermproto.WSMessage{Type: "terminal_subscribed", Data: sub})
+			}
+		case "terminal_input":
+			if claims.Role != "admin" && claims.Role != "operator" {
+				_ = client.writeJSON(hubtermproto.WSMessage{Type: "error", Data: map[string]string{"message": "operator required"}})
+				continue
+			}
+			var input hubtermproto.TerminalInput
+			if json.Unmarshal(raw, &input) != nil || !client.matches(input.NodeID, input.SessionID) || !validTerminalInput(input) {
+				continue
+			}
+			if agentWS == nil {
+				continue
+			}
+			if err := agentWS.SendTerminalInput(input.NodeID, input.SessionID, input.Data); err != nil {
+				_ = client.writeJSON(hubtermproto.WSMessage{Type: "error", Data: map[string]string{"message": err.Error()}})
+			}
 		}
 	}
 }
 
-// BroadcastNodeUpdate sends a node update to all connected WebSocket clients.
-// FIXED: Collect failed connections under RLock, then delete after releasing lock.
-func BroadcastNodeUpdate(node model.Node) {
-	data, err := json.Marshal(map[string]interface{}{
-		"type": "node_update",
-		"data": node,
-	})
-	if err != nil {
+func snapshotBrowserClients() []*browserClient {
+	wsClientsMu.RLock()
+	defer wsClientsMu.RUnlock()
+	clients := make([]*browserClient, 0, len(wsClients))
+	for _, client := range wsClients {
+		clients = append(clients, client)
+	}
+	return clients
+}
+
+func removeBrowserClients(failed []*browserClient) {
+	if len(failed) == 0 {
 		return
 	}
+	wsClientsMu.Lock()
+	defer wsClientsMu.Unlock()
+	for _, client := range failed {
+		delete(wsClients, client.conn)
+		_ = client.conn.Close()
+	}
+}
 
-	wsClientsMu.RLock()
-	var failed []*websocket.Conn
-	for conn := range wsClients {
-		err := conn.WriteMessage(websocket.TextMessage, data)
-		if err != nil {
-			wsLog.Warn("ws write error", log.Err(err))
-			conn.Close()
-			failed = append(failed, conn)
+// BroadcastNodeUpdate sends a node update to all connected browser clients.
+func BroadcastNodeUpdate(node model.Node) {
+	msg := hubtermproto.WSMessage{Type: "node_update", Data: node}
+	var failed []*browserClient
+	for _, client := range snapshotBrowserClients() {
+		if err := client.writeJSON(msg); err != nil {
+			failed = append(failed, client)
 		}
 	}
-	wsClientsMu.RUnlock()
+	removeBrowserClients(failed)
+}
 
-	// Delete failed connections outside the lock
-	if len(failed) > 0 {
-		wsClientsMu.Lock()
-		for _, conn := range failed {
-			delete(wsClients, conn)
-		}
-		wsClientsMu.Unlock()
+// BroadcastTerminalData forwards traffic only to browsers subscribed to this session.
+func BroadcastTerminalData(nodeID string, terminalData hubtermproto.TerminalData) {
+	msg := hubtermproto.WSMessage{
+		Type: "terminal_data",
+		Data: map[string]interface{}{"node_id": nodeID, "terminal": terminalData},
 	}
+	var failed []*browserClient
+	for _, client := range snapshotBrowserClients() {
+		if !client.matches(nodeID, terminalData.SessionID) {
+			continue
+		}
+		if err := client.writeJSON(msg); err != nil {
+			failed = append(failed, client)
+		}
+	}
+	removeBrowserClients(failed)
 }

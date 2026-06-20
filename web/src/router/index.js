@@ -7,6 +7,7 @@ import NodeDetail from '../views/NodeDetail.vue'
 import Sessions from '../views/Sessions.vue'
 import AuditLogs from '../views/AuditLogs.vue'
 import Terminal from '../views/Terminal.vue'
+import SharedTerminal from '../views/SharedTerminal.vue'
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
@@ -22,6 +23,7 @@ const routes = [
       { path: 'sessions', name: 'Sessions', component: Sessions },
       { path: 'audit-logs', name: 'AuditLogs', component: AuditLogs },
       { path: 'terminal/:nodeId/:portName', name: 'Terminal', component: Terminal },
+      { path: 'shared-terminal/:nodeId/:sessionId', name: 'SharedTerminal', component: SharedTerminal },
     ],
   },
 ]

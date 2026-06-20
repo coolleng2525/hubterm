@@ -69,8 +69,9 @@
             {{ formatTime(row.connected_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
+            <el-button type="success" link size="small" @click="openSharedTerminal(row)">共享终端</el-button>
             <el-button type="primary" link size="small" @click="handleAssignMaster(row)">设为主控</el-button>
             <el-button type="danger" link size="small" @click="handleKick(row)">踢掉</el-button>
           </template>
@@ -110,6 +111,10 @@ function formatTime(t) {
 
 function openTerminal(port) {
   router.push(`/terminal/${node.value.node_id}/${port.port_name}`)
+}
+
+function openSharedTerminal(session) {
+  router.push(`/shared-terminal/${node.value.node_id}/${session.session_id}`)
 }
 
 async function handleKick(session) {

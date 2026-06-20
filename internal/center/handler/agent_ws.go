@@ -2,9 +2,11 @@
 package handler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,24 +47,22 @@ func NewAgentWSHandler(db *gorm.DB) *AgentWSHandler {
 // HandleAgentWS 处理 agent 的 WebSocket 连接
 func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 	nodeID := r.URL.Query().Get("node_id")
-	auth := r.Header.Get("Authorization")
-	tokenStr := ""
-	if len(auth) > len("Bearer ") && auth[:len("Bearer ")] == "Bearer " {
-		tokenStr = auth[len("Bearer "):]
-	}
+	tokenStr := agentToken(r)
 
-	if nodeID == "" || tokenStr == "" {
-		http.Error(w, "missing node_id or token", http.StatusUnauthorized)
+	if tokenStr == "" {
+		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}
 
-	// 验证 node token
+	// The token is authoritative. This also lets browser-based agents connect
+	// without having to discover the center's node ID first.
 	var node model.Node
-	if err := h.DB.Where("node_id = ? AND token = ?", nodeID, tokenStr).First(&node).Error; err != nil {
+	if err := h.DB.Where("token = ?", tokenStr).First(&node).Error; err != nil {
 		agentWSLog.Warn("agent ws auth failed", log.String("node_id", nodeID))
 		http.Error(w, "invalid node token", http.StatusUnauthorized)
 		return
 	}
+	nodeID = node.NodeID
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -114,11 +114,149 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 		case "pong":
 			// ping-pong 保持连接
 		case "report":
-			// agent 通过 WS 上报 — 可选的，HTTP 上报仍是主要方式
+			h.handleReport(nodeID, msg.Data)
+		case "terminal_data":
+			var terminalData hubtermproto.TerminalData
+			raw, err := json.Marshal(msg.Data)
+			if err != nil || json.Unmarshal(raw, &terminalData) != nil || !validTerminalData(terminalData) {
+				agentWSLog.Warn("invalid terminal data", log.String("node_id", nodeID))
+				continue
+			}
+			if h.ownsSession(nodeID, terminalData.SessionID) {
+				BroadcastTerminalData(nodeID, terminalData)
+			}
 		default:
 			agentWSLog.Debug("unknown agent message", log.String("type", msg.Type))
 		}
 	}
+}
+
+func agentToken(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimPrefix(auth, "Bearer ")
+	}
+	for _, protocol := range websocket.Subprotocols(r) {
+		if strings.HasPrefix(protocol, "hubterm.node.") {
+			return strings.TrimPrefix(protocol, "hubterm.node.")
+		}
+	}
+	return ""
+}
+func validTerminalData(data hubtermproto.TerminalData) bool {
+	if data.SessionID == "" || (data.Direction != "input" && data.Direction != "output") {
+		return false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(data.Data)
+	return err == nil && len(decoded) <= 1024*1024
+}
+
+func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	var report hubtermproto.NodeReport
+	if err := json.Unmarshal(raw, &report); err != nil {
+		agentWSLog.Warn("invalid agent report", log.String("node_id", nodeID), log.Err(err))
+		return
+	}
+	if len(report.Sessions) > 1000 {
+		agentWSLog.Warn("agent report has too many sessions", log.String("node_id", nodeID))
+		return
+	}
+	now := time.Now()
+	tx := h.DB.Begin()
+	if err := tx.Model(&model.Node{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
+		"name": report.Name, "hostname": report.Hostname, "os": report.OS,
+		"os_version": report.OSVersion, "arch": report.Arch,
+		"status": "online", "last_seen": now, "updated_at": now,
+	}).Error; err != nil {
+		tx.Rollback()
+		return
+	}
+
+	sessionIDs := make([]string, 0, len(report.Sessions))
+	for _, incoming := range report.Sessions {
+		if incoming.SessionID == "" {
+			continue
+		}
+		connectedAt := now
+		if incoming.ConnectedAt > 0 {
+			connectedAt = time.Unix(incoming.ConnectedAt, 0)
+		}
+		var session model.Session
+		result := tx.Where("session_id = ?", incoming.SessionID).First(&session)
+		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+			tx.Rollback()
+			return
+		}
+		if result.Error == nil && session.NodeID != nodeID {
+			agentWSLog.Warn("rejected session owned by another node",
+				log.String("node_id", nodeID), log.String("session_id", incoming.SessionID))
+			tx.Rollback()
+			return
+		}
+		attrs := map[string]interface{}{
+			"node_id": nodeID, "port_name": incoming.PortName, "user": incoming.User,
+			"type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
+		}
+		if result.Error == gorm.ErrRecordNotFound {
+			session = model.Session{SessionID: incoming.SessionID}
+			if err := tx.Model(&session).Assign(attrs).FirstOrCreate(&session).Error; err != nil {
+				tx.Rollback()
+				return
+			}
+		} else if err := tx.Model(&session).Updates(attrs).Error; err != nil {
+			tx.Rollback()
+			return
+		}
+		sessionIDs = append(sessionIDs, incoming.SessionID)
+	}
+	stale := tx.Where("node_id = ?", nodeID)
+	if len(sessionIDs) > 0 {
+		stale = stale.Where("session_id NOT IN ?", sessionIDs)
+	}
+	if err := stale.Delete(&model.Session{}).Error; err != nil {
+		tx.Rollback()
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		return
+	}
+	var node model.Node
+	if h.DB.Where("node_id = ?", nodeID).First(&node).Error == nil {
+		BroadcastNodeUpdate(node)
+	}
+}
+
+func validTerminalInput(input hubtermproto.TerminalInput) bool {
+	if input.NodeID == "" || input.SessionID == "" {
+		return false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(input.Data)
+	return err == nil && len(decoded) <= 1024*1024
+}
+
+func (h *AgentWSHandler) ownsSession(nodeID, sessionID string) bool {
+	var count int64
+	return h.DB.Model(&model.Session{}).
+		Where("node_id = ? AND session_id = ?", nodeID, sessionID).
+		Count(&count).Error == nil && count == 1
+}
+
+func (h *AgentWSHandler) SendTerminalInput(nodeID, sessionID, data string) error {
+	input := hubtermproto.TerminalInput{NodeID: nodeID, SessionID: sessionID, Data: data}
+	if !validTerminalInput(input) {
+		return fmt.Errorf("invalid terminal input")
+	}
+	if !h.ownsSession(nodeID, sessionID) {
+		return fmt.Errorf("terminal session not found")
+	}
+	cmd := hubtermproto.ExecCommand{ID: uuid.New().String(), Type: "write"}
+	cmd.Payload.SessionID = sessionID
+	cmd.Payload.Data = data
+	return h.sendCommand(nodeID, cmd)
 }
 
 // SendExecCommand 向指定节点下发命令
