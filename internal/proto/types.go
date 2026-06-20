@@ -10,6 +10,7 @@ type NetworkInterfaceInfo struct {
 // NodeReport 节点上报数据
 type NodeReport struct {
 	NodeID        string                 `json:"node_id"`
+	Source        string                 `json:"source,omitempty"`
 	Name          string                 `json:"name"`
 	IP            string                 `json:"ip"`
 	Hostname      string                 `json:"hostname"`

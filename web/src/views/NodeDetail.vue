@@ -18,6 +18,11 @@
       </template>
       <el-descriptions :column="3" border size="small">
         <el-descriptions-item label="节点ID"><code>{{ node.node_id }}</code></el-descriptions-item>
+        <el-descriptions-item label="来源">
+          <el-tag :type="node.source === 'tabby' ? 'warning' : 'info'" size="small">
+            {{ node.source === 'tabby' ? 'Tabby 插件' : 'Agent' }}
+          </el-tag>
+        </el-descriptions-item>
         <el-descriptions-item label="主机名">{{ node.hostname }}</el-descriptions-item>
         <el-descriptions-item label="系统">{{ node.os }} {{ node.os_version }}</el-descriptions-item>
         <el-descriptions-item label="架构">{{ node.arch }}</el-descriptions-item>

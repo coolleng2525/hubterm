@@ -114,6 +114,7 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	}
 
 	now := time.Now()
+	source := normalizeNodeSource(report.Source)
 
 	// upsert node
 	var node model.Node
@@ -147,7 +148,12 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		}
 	}
 	node.Name = report.Name
-	node.IP = report.IP
+	node.Source = source
+	if strings.TrimSpace(report.IP) != "" {
+		node.IP = report.IP
+	} else {
+		node.IP = c.ClientIP()
+	}
 	node.Hostname = report.Hostname
 	node.OS = report.OS
 	node.OSVersion = report.OSVersion
@@ -248,6 +254,13 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		response["token"] = node.Token
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+func normalizeNodeSource(source string) string {
+	if strings.EqualFold(strings.TrimSpace(source), "tabby") {
+		return "tabby"
+	}
+	return "agent"
 }
 
 // Command 下发指令到节点

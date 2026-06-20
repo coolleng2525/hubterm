@@ -37,6 +37,7 @@ type SSHProfile struct {
 type Node struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	NodeID        string    `gorm:"uniqueIndex;size:64;not null" json:"node_id"`
+	Source        string    `gorm:"size:32;not null;default:agent" json:"source"`
 	Name          string    `gorm:"size:128" json:"name"`
 	IP            string    `gorm:"size:64" json:"ip"`
 	Hostname      string    `gorm:"size:128" json:"hostname"`

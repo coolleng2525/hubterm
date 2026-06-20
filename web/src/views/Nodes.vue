@@ -21,6 +21,13 @@
       <el-table-column prop="ip" label="IP" width="140" />
       <el-table-column prop="hostname" label="主机名" width="140" />
       <el-table-column prop="os" label="系统" width="80" />
+      <el-table-column label="来源" width="100">
+        <template #default="{ row }">
+          <el-tag :type="row.source === 'tabby' ? 'warning' : 'info'" size="small">
+            {{ row.source === 'tabby' ? 'Tabby' : 'Agent' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
           <el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small">

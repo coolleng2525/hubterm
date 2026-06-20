@@ -57,6 +57,7 @@ func (r *Reporter) Report() error {
 
 	report := hubtermproto.NodeReport{
 		NodeID:        r.NodeID,
+		Source:        "agent",
 		Name:          r.NodeName,
 		IP:            collector.GetLocalIP(),
 		Hostname:      sysInfo.Hostname,

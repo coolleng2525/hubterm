@@ -70,6 +70,18 @@ func main() {
 	service.EnsureAdminExists()
 
 	r := gin.Default()
+	r.Use(func(c *gin.Context) {
+		if c.Request.URL.Path == "/api/nodes/report" {
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
+			if c.Request.Method == http.MethodOptions {
+				c.AbortWithStatus(http.StatusNoContent)
+				return
+			}
+		}
+		c.Next()
+	})
 
 	// handlers
 	authH := &handler.AuthHandler{DB: model.GetDB()}

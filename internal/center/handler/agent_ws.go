@@ -168,9 +168,11 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 		return
 	}
 	now := time.Now()
+	source := normalizeNodeSource(report.Source)
 	tx := h.DB.Begin()
 	if err := tx.Model(&model.Node{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
 		"name": report.Name, "hostname": report.Hostname, "os": report.OS,
+		"source":     source,
 		"os_version": report.OSVersion, "arch": report.Arch,
 		"status": "online", "last_seen": now, "updated_at": now,
 	}).Error; err != nil {
