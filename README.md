@@ -8,16 +8,17 @@
 
 ```
 中心服务 (Center) ← HTTP REST + WebSocket → 节点代理 (Agent) × N
-    ↑                                      ↑
-前端 (Vue 3 + xterm.js)              WindTerm (已集成 HubTerm Agent)
-    ↑                                      ↑
- 用户/AI                             用户/AI
+    ↑                    ↑                      ↑
+前端 (Vue 3 + xterm.js)  Tabby (内置插件)      WindTerm (已集成 HubTerm Agent)
+    ↑                    ↑                      ↑
+ 用户/AI              用户/AI                 用户/AI
 ```
 
 - **中心服务**：数据汇总、统一管理后台、全局审计
 - **节点代理**：运行在各机器上，采集系统状态、扫描串口，每 3 秒上报到中心
-- **WindTerm**：已集成 HubTerm Agent，启动时自动发现中心、上报能力、透传终端数据
-- **前端**：Vue 3 + xterm.js Web 终端
+- **Tabby**：已开发 tabby-hubterm 内置插件，终端 I/O 实时透传，支持共享终端
+- **WindTerm**：已集成 HubTerm Agent（hubterm-v1 分支），启动时自动发现中心、上报能力、透传终端数据
+- **前端**：Vue 3 + xterm.js Web 终端，支持共享终端（SharedTerminal）
 
 ## 快速开始
 
@@ -56,13 +57,11 @@ npm run dev
 
 ### 使用 WindTerm（已集成 HubTerm）
 
-WindTerm 已集成 HubTerm Agent，无需额外配置：
+WindTerm hubterm-v1 分支已集成 HubTerm Agent 源码（`src/HubTerm/`），但当前 fork 仅包含部分开源源码，缺少完整 Qt 工程文件和闭源部分，**无法从该仓库构建完整 WindTerm 应用**。
 
-1. 启动 WindTerm，自动连接 HubTerm 中心
-2. 自动上报本机串口列表、SSH 会话、系统信息
-3. 在 HubTerm Web 后台可以看到 WindTerm 节点在线
-4. 终端 I/O 实时透传，Web 页面和 AI 可实时查看
-5. 支持只读/可写权限控制
+`src/HubTerm/` 模块可作为独立原型库编译测试，待取得完整 WindTerm 可构建源码后接入真实构建目标。
+
+详见 [WindTerm 集成文档](docs/windterm-hubterm-integration.md) 和 [Tabby/WindTerm 进度交接](docs/windterm-tabby-progress-2026-06-20.md)。
 
 ## 构建与发布
 
