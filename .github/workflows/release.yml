@@ -29,6 +29,13 @@ jobs:
         run: |
           cd web && npm ci && npm run build
 
+      - name: Build Tabby plugin
+        run: |
+          cd tabby-hubterm-plugin
+          npm ci --legacy-peer-deps
+          npm run build
+          npm pack
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -37,3 +44,8 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Tabby plugin package
+        run: gh release upload "${GITHUB_REF_NAME}" tabby-hubterm-plugin/tabby-hubterm-*.tgz --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
