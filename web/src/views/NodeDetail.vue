@@ -11,6 +11,9 @@
               {{ node.status === 'online' ? '在线' : '离线' }}
             </el-tag>
           </div>
+          <el-button type="primary" :disabled="node.status !== 'online'" @click="openSSH">
+            SSH 连接
+          </el-button>
         </div>
       </template>
       <el-descriptions :column="3" border size="small">
