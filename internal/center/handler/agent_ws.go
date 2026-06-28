@@ -172,9 +172,16 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 	tx := h.DB.Begin()
 	if err := tx.Model(&model.Node{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
 		"name": report.Name, "hostname": report.Hostname, "os": report.OS,
-		"source":     source,
-		"os_version": report.OSVersion, "arch": report.Arch,
-		"status": "online", "last_seen": now, "updated_at": now,
+		"source":         source,
+		"os_version":     report.OSVersion,
+		"arch":           report.Arch,
+		"cpu_percent":    report.CPUPercent,
+		"memory_total":   report.MemoryTotal,
+		"memory_used":    report.MemoryUsed,
+		"memory_percent": report.MemoryPercent,
+		"disk_total":     report.DiskTotal,
+		"disk_used":      report.DiskUsed,
+		"status":         "online", "last_seen": now, "updated_at": now,
 	}).Error; err != nil {
 		tx.Rollback()
 		return

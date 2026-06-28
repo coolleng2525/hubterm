@@ -35,6 +35,8 @@ func TestAgentBrowserTerminalRoundTrip(t *testing.T) {
 	defer agentConn.Close()
 
 	report := hubtermproto.NodeReport{Name: "Tabby test", Hostname: "tabby-host", OS: "linux",
+		CPUPercent: 12.5, MemoryTotal: 8589934592, MemoryUsed: 4294967296, MemoryPercent: 50,
+		DiskTotal: 107374182400, DiskUsed: 53687091200,
 		Sessions: []hubtermproto.SessionInfo{{SessionID: "session-shared", PortName: "SSH test", Type: "master", ConnectedAt: time.Now().Unix()}}}
 	if err := agentConn.WriteJSON(hubtermproto.WSMessage{Type: "report", Data: report}); err != nil {
 		t.Fatal(err)
@@ -50,6 +52,18 @@ func TestAgentBrowserTerminalRoundTrip(t *testing.T) {
 			t.Fatal("agent report did not create session")
 		}
 		time.Sleep(time.Millisecond)
+	}
+	var updatedNode model.Node
+	if err := db.Where("node_id = ?", "node-shared").First(&updatedNode).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updatedNode.CPUPercent != report.CPUPercent ||
+		updatedNode.MemoryTotal != report.MemoryTotal ||
+		updatedNode.MemoryUsed != report.MemoryUsed ||
+		updatedNode.MemoryPercent != report.MemoryPercent ||
+		updatedNode.DiskTotal != report.DiskTotal ||
+		updatedNode.DiskUsed != report.DiskUsed {
+		t.Fatalf("agent report did not update metrics: %+v", updatedNode)
 	}
 
 	browserServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { HandleWS(r, w, agentHandler) }))
