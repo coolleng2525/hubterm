@@ -213,12 +213,24 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 			"type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
 		}
 		if result.Error == gorm.ErrRecordNotFound {
-			session = model.Session{SessionID: incoming.SessionID}
-			if err := tx.Model(&session).Assign(attrs).FirstOrCreate(&session).Error; err != nil {
+			session = model.Session{
+				SessionID:   incoming.SessionID,
+				NodeID:      nodeID,
+				PortName:    incoming.PortName,
+				User:        incoming.User,
+				Type:        incoming.Type,
+				ClientIP:    incoming.ClientIP,
+				ConnectedAt: connectedAt,
+			}
+			if err := tx.Create(&session).Error; err != nil {
+				agentWSLog.Error("failed to create reported session",
+					log.String("node_id", nodeID), log.String("session_id", incoming.SessionID), log.Err(err))
 				tx.Rollback()
 				return
 			}
 		} else if err := tx.Model(&session).Updates(attrs).Error; err != nil {
+			agentWSLog.Error("failed to update reported session",
+				log.String("node_id", nodeID), log.String("session_id", incoming.SessionID), log.Err(err))
 			tx.Rollback()
 			return
 		}
@@ -229,6 +241,7 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 		stale = stale.Where("session_id NOT IN ?", sessionIDs)
 	}
 	if err := stale.Delete(&model.Session{}).Error; err != nil {
+		agentWSLog.Error("failed to delete stale reported sessions", log.String("node_id", nodeID), log.Err(err))
 		tx.Rollback()
 		return
 	}
