@@ -25,12 +25,14 @@ type ProxySession struct {
 
 // ProxyHandler 会话代理 API 处理器
 type ProxyHandler struct {
-	DB          *gorm.DB
-	mu          sync.RWMutex
+	DB            *gorm.DB
+	mu            sync.RWMutex
 	proxySessions map[string]*ProxySession
 }
 
 var proxyLog = log.New("proxy_handler")
+
+const proxySessionTTL = 24 * time.Hour
 
 // NewProxyHandler 创建代理处理器
 func NewProxyHandler(db *gorm.DB) *ProxyHandler {
@@ -92,6 +94,7 @@ func (h *ProxyHandler) Connect(c *gin.Context) {
 	}
 
 	h.mu.Lock()
+	h.cleanupExpiredLocked(time.Now())
 	h.proxySessions[sessionID] = ps
 	h.mu.Unlock()
 
@@ -122,6 +125,7 @@ func (h *ProxyHandler) Disconnect(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
 	h.mu.Lock()
+	h.cleanupExpiredLocked(time.Now())
 	ps, ok := h.proxySessions[sessionID]
 	if ok {
 		ps.Status = "closed"
@@ -141,12 +145,22 @@ func (h *ProxyHandler) Disconnect(c *gin.Context) {
 // ListSessions 活跃代理会话列表
 // GET /api/proxy/sessions
 func (h *ProxyHandler) ListSessions(c *gin.Context) {
-	h.mu.RLock()
+	h.mu.Lock()
+	h.cleanupExpiredLocked(time.Now())
 	sessions := make([]*ProxySession, 0, len(h.proxySessions))
 	for _, s := range h.proxySessions {
 		sessions = append(sessions, s)
 	}
-	h.mu.RUnlock()
+	h.mu.Unlock()
 
 	c.JSON(http.StatusOK, sessions)
+}
+
+func (h *ProxyHandler) cleanupExpiredLocked(now time.Time) {
+	for id, session := range h.proxySessions {
+		if now.Sub(session.CreatedAt) > proxySessionTTL {
+			session.Status = "closed"
+			delete(h.proxySessions, id)
+		}
+	}
 }

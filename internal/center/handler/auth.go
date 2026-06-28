@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/coolleng2525/hubterm/internal/center/middleware"
 	"github.com/coolleng2525/hubterm/internal/center/model"
@@ -17,6 +19,21 @@ type AuthHandler struct {
 }
 
 var authLog = log.New("auth_handler")
+
+const (
+	loginRateLimitWindow      = time.Minute
+	loginRateLimitMaxAttempts = 5
+)
+
+type loginAttemptBucket struct {
+	count      int
+	windowEnds time.Time
+}
+
+var (
+	loginAttemptsMu sync.Mutex
+	loginAttempts   = make(map[string]loginAttemptBucket)
+)
 
 type LoginReq struct {
 	Username string `json:"username" binding:"required"`
@@ -37,6 +54,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	clientIP := c.ClientIP()
+	if !allowLoginAttempt(clientIP, time.Now()) {
+		authLog.Warn("login rate limited", log.String("ip", clientIP))
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many login attempts"})
+		return
+	}
 
 	var user model.User
 	if err := h.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
@@ -69,6 +91,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		log.String("role", user.Role),
 		log.String("ip", clientIP),
 	)
+	resetLoginAttempts(clientIP)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
@@ -78,6 +101,29 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			"role":     user.Role,
 		},
 	})
+}
+
+func allowLoginAttempt(ip string, now time.Time) bool {
+	loginAttemptsMu.Lock()
+	defer loginAttemptsMu.Unlock()
+
+	bucket := loginAttempts[ip]
+	if bucket.windowEnds.IsZero() || now.After(bucket.windowEnds) {
+		bucket = loginAttemptBucket{windowEnds: now.Add(loginRateLimitWindow)}
+	}
+	if bucket.count >= loginRateLimitMaxAttempts {
+		loginAttempts[ip] = bucket
+		return false
+	}
+	bucket.count++
+	loginAttempts[ip] = bucket
+	return true
+}
+
+func resetLoginAttempts(ip string) {
+	loginAttemptsMu.Lock()
+	defer loginAttemptsMu.Unlock()
+	delete(loginAttempts, ip)
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {

@@ -7,11 +7,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func TestLoginSuccess(t *testing.T) {
+	resetLoginAttemptsForTest()
 	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
 	defer os.Unsetenv("JWT_SECRET")
 
@@ -51,6 +53,7 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginFail(t *testing.T) {
+	resetLoginAttemptsForTest()
 	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
 	defer os.Unsetenv("JWT_SECRET")
 
@@ -97,6 +100,22 @@ func TestLoginFail(t *testing.T) {
 			t.Errorf("expected 400, got %d", w.Code)
 		}
 	})
+}
+
+func TestLoginRateLimit(t *testing.T) {
+	resetLoginAttemptsForTest()
+	now := time.Now()
+	for i := 0; i < loginRateLimitMaxAttempts; i++ {
+		if !allowLoginAttempt("192.0.2.10", now) {
+			t.Fatalf("attempt %d was unexpectedly denied", i+1)
+		}
+	}
+	if allowLoginAttempt("192.0.2.10", now) {
+		t.Fatal("expected login attempt to be rate limited")
+	}
+	if !allowLoginAttempt("192.0.2.10", now.Add(loginRateLimitWindow+time.Second)) {
+		t.Fatal("expected login attempts to reset after window")
+	}
 }
 
 func TestRegister(t *testing.T) {
@@ -160,4 +179,10 @@ func TestRegister(t *testing.T) {
 			t.Errorf("expected default role=operator, got %v", resp["role"])
 		}
 	})
+}
+
+func resetLoginAttemptsForTest() {
+	loginAttemptsMu.Lock()
+	defer loginAttemptsMu.Unlock()
+	loginAttempts = make(map[string]loginAttemptBucket)
 }

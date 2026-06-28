@@ -111,37 +111,14 @@ func TestValidateEmpty(t *testing.T) {
 	}
 }
 
-func TestResolveParams(t *testing.T) {
-	source := "print('hello ${name}')"
-	params := map[string]string{"name": "world"}
-	result := resolveParams(source, params)
-	if result != "print('hello world')" {
-		t.Fatalf("expected 'print('hello world')', got %q", result)
-	}
-}
-
-func TestResolveParamsMultiple(t *testing.T) {
-	source := "${greeting} ${target}"
-	params := map[string]string{"greeting": "hello", "target": "world"}
-	result := resolveParams(source, params)
-	if result != "hello world" {
-		t.Fatalf("expected 'hello world', got %q", result)
-	}
-}
-
-func TestResolveParamsNoMatch(t *testing.T) {
-	source := "print('hello ${name}')"
-	result := resolveParams(source, nil)
-	if result != source {
-		t.Fatalf("expected unchanged source, got %q", result)
-	}
-}
-
-func TestExecuteWithPlaceholderParams(t *testing.T) {
+func TestExecuteWithEnvironmentParams(t *testing.T) {
 	engine := NewEngine()
 	script := &Script{
-		Name:   "test-placeholder",
-		Source: "name = '${name}'\nprint(f'hello {name}')",
+		Name: "test-env-param",
+		Params: []Param{
+			{Name: "name", Type: "string", Required: true},
+		},
+		Source: "import os\nprint('hello ' + os.environ['name'])",
 	}
 	result, err := engine.Execute(script, map[string]string{"name": "hubterm"})
 	if err != nil {
@@ -149,6 +126,25 @@ func TestExecuteWithPlaceholderParams(t *testing.T) {
 	}
 	if !strings.Contains(result.Stdout, "hello hubterm") {
 		t.Fatalf("expected stdout to contain 'hello hubterm', got %q", result.Stdout)
+	}
+}
+
+func TestExecuteShellParamDoesNotEvaluateCommandSubstitution(t *testing.T) {
+	engine := NewEngine()
+	script := &Script{
+		Name:     "test-shell-param-injection",
+		Language: "shell",
+		Params: []Param{
+			{Name: "name", Type: "string", Required: true},
+		},
+		Source: "printf '%s' \"${name}\"",
+	}
+	result, err := engine.Execute(script, map[string]string{"name": "$(printf injected)"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Stdout != "$(printf injected)" {
+		t.Fatalf("expected literal command substitution, got %q", result.Stdout)
 	}
 }
 

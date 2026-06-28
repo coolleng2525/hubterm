@@ -12,9 +12,12 @@ import (
 )
 
 func key() ([]byte, error) {
-	secret := os.Getenv("JWT_SECRET")
+	secret := os.Getenv("ENCRYPTION_KEY")
 	if secret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is required for credential encryption")
+		secret = os.Getenv("JWT_SECRET")
+	}
+	if secret == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY is required for credential encryption")
 	}
 	sum := sha256.Sum256([]byte("hubterm:ssh-credentials:v1:" + secret))
 	return sum[:], nil

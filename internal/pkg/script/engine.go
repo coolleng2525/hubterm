@@ -8,10 +8,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
 )
+
+const maxOutputBytes = 10 * 1024 * 1024
+
+var envNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // Script defines a script that can be executed by the engine.
 type Script struct {
@@ -100,9 +105,9 @@ func defaultPythonPath() string {
 }
 
 // Execute runs a script locally with the given parameters.
-// It writes the script source to a temporary file, resolves ${PARAM} placeholders
-// with the provided parameter values, executes the script via the Python interpreter,
-// captures stdout/stderr/exit code, cleans up the temp file, and returns the result.
+// It writes the script source to a temporary file, passes parameters through argv
+// and environment variables, captures stdout/stderr/exit code, cleans up the temp
+// file, and returns the result.
 func (e *Engine) Execute(script *Script, params map[string]string) (*Result, error) {
 	if script == nil {
 		return nil, fmt.Errorf("script is nil")
@@ -111,17 +116,18 @@ func (e *Engine) Execute(script *Script, params map[string]string) (*Result, err
 	// Determine the interpreter based on language.
 	interpreter := e.PythonPath
 
-	// Resolve parameter placeholders in the source.
-	source := resolveParams(script.Source, params)
-
 	// Write source to a temporary file.
-	tmpFile, err := os.CreateTemp("", "hubterm-script-*")
+	tmpPattern := "hubterm-script-*"
+	if script.Language == "shell" && runtime.GOOS == "windows" {
+		tmpPattern = "hubterm-script-*.cmd"
+	}
+	tmpFile, err := os.CreateTemp("", tmpPattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 
-	if _, err := tmpFile.WriteString(source); err != nil {
+	if _, err := tmpFile.WriteString(script.Source); err != nil {
 		tmpFile.Close()
 		os.Remove(tmpPath)
 		return nil, fmt.Errorf("failed to write temp file: %w", err)
@@ -134,7 +140,7 @@ func (e *Engine) Execute(script *Script, params map[string]string) (*Result, err
 	if script.Language == "shell" {
 		if runtime.GOOS == "windows" {
 			interpreter = "cmd"
-			args = []string{"/c", source}
+			args = []string{"/c", tmpPath}
 		} else {
 			interpreter = "bash"
 		}
@@ -161,8 +167,9 @@ func (e *Engine) Execute(script *Script, params map[string]string) (*Result, err
 
 	// Prepare and execute the command.
 	cmd := exec.CommandContext(ctx, interpreter, args...)
+	cmd.Env = append(os.Environ(), paramEnv(script.Params, params)...)
 
-	var stdout, stderr bytes.Buffer
+	var stdout, stderr limitedBuffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -244,15 +251,70 @@ except SyntaxError as e:
 	return nil
 }
 
-// resolveParams replaces ${PARAM} placeholders in the source with actual values.
-// Parameters not found in the map are left as-is.
-func resolveParams(source string, params map[string]string) string {
-	if len(params) == 0 {
-		return source
+func paramEnv(paramDefs []Param, params map[string]string) []string {
+	env := make([]string, 0, len(paramDefs)*2)
+	for _, p := range paramDefs {
+		value, ok := params[p.Name]
+		if !ok {
+			value = p.Default
+		}
+		if !ok && p.Default == "" && !p.Required {
+			continue
+		}
+		if envNamePattern.MatchString(p.Name) {
+			env = append(env, p.Name+"="+value)
+		}
+		env = append(env, "HUBTERM_PARAM_"+sanitizeEnvName(p.Name)+"="+value)
 	}
-	result := source
-	for key, val := range params {
-		result = strings.ReplaceAll(result, "${"+key+"}", val)
+	return env
+}
+
+func sanitizeEnvName(name string) string {
+	if name == "" {
+		return "PARAM"
 	}
-	return result
+	var b strings.Builder
+	for i, r := range name {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_' || (i > 0 && r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	if b.Len() == 0 || !envNamePattern.MatchString(b.String()) {
+		return "PARAM_" + b.String()
+	}
+	return b.String()
+}
+
+type limitedBuffer struct {
+	buf       bytes.Buffer
+	limit     int
+	truncated bool
+}
+
+func (b *limitedBuffer) Write(p []byte) (int, error) {
+	limit := b.limit
+	if limit <= 0 {
+		limit = maxOutputBytes
+	}
+	if b.buf.Len() < limit {
+		remaining := limit - b.buf.Len()
+		if len(p) <= remaining {
+			_, _ = b.buf.Write(p)
+		} else {
+			_, _ = b.buf.Write(p[:remaining])
+			b.truncated = true
+		}
+	} else {
+		b.truncated = true
+	}
+	return len(p), nil
+}
+
+func (b *limitedBuffer) String() string {
+	if !b.truncated {
+		return b.buf.String()
+	}
+	return b.buf.String() + "\n[output truncated]\n"
 }

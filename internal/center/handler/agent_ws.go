@@ -391,6 +391,8 @@ func (h *AgentWSHandler) ExecCommandHandler(caughtContext interface{}) {
 
 // --- 存储执行结果的内存表 ---
 
+const execResultTTL = time.Hour
+
 type execResultEntry struct {
 	CmdID     string
 	NodeID    string
@@ -408,14 +410,24 @@ var (
 func StoreExecResult(entry *execResultEntry) {
 	execResultsMu.Lock()
 	defer execResultsMu.Unlock()
+	cleanupExecResultsLocked(time.Now())
 	execResults[entry.CmdID] = entry
 }
 
 // GetExecResult 查询命令执行结果
 func GetExecResult(cmdID string) *execResultEntry {
-	execResultsMu.RLock()
-	defer execResultsMu.RUnlock()
+	execResultsMu.Lock()
+	defer execResultsMu.Unlock()
+	cleanupExecResultsLocked(time.Now())
 	return execResults[cmdID]
+}
+
+func cleanupExecResultsLocked(now time.Time) {
+	for cmdID, entry := range execResults {
+		if now.Sub(entry.CreatedAt) > execResultTTL {
+			delete(execResults, cmdID)
+		}
+	}
 }
 
 // AgentExecResultHandler 处理 agent 返回的执行结果（从 WS 消息中解析）
