@@ -23,7 +23,13 @@ var upgrader = websocket.Upgrader{
 			return true
 		}
 		originURL, err := url.Parse(origin)
-		if err != nil || originURL.Hostname() == "" {
+		if err != nil {
+			return false
+		}
+		if originURL.Scheme == "file" || originURL.Scheme == "app" {
+			return true
+		}
+		if originURL.Hostname() == "" {
 			return false
 		}
 		requestURL, err := url.Parse("http://" + r.Host)
