@@ -1,0 +1,17 @@
+.git
+.github
+web/node_modules
+tabby-hubterm-plugin
+docs
+*.md
+*.db
+config.yaml
+.env
+.env.*
+hubterm-center
+hubterm-agent
+center
+*.test
+*.exe
+.idea
+.vscode

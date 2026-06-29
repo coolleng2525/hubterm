@@ -3,13 +3,14 @@ services:
   hubterm:
     build: .
     ports:
-      - "8080:8080"
+      - "${PORT:-8080}:${PORT:-8080}"
     volumes:
       - hubterm-data:/data
     environment:
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
       - DB_PATH=/data/hubterm.db
+      - PORT=${PORT:-8080}
     restart: unless-stopped
 
 volumes:

@@ -38,3 +38,4 @@ vendor/
 *.db
 hubterm-center.bak*
 hubterm-center.log
+config.yaml
