@@ -64,6 +64,23 @@ func TestGetResourceUsage(t *testing.T) {
 	}
 }
 
+func TestGetOutboundIP(t *testing.T) {
+	ip := GetOutboundIP("8.8.8.8")
+	if ip == "" {
+		t.Skip("no outbound route to 8.8.8.8")
+	}
+	if len(ip) < 7 {
+		t.Errorf("unexpected IP format: %s", ip)
+	}
+}
+
+func TestLocalIPForCenter(t *testing.T) {
+	ip := LocalIPForCenter("http://127.0.0.1:8080", "10.1.2.3")
+	if ip != "10.1.2.3" {
+		t.Errorf("override: got %s", ip)
+	}
+}
+
 func TestGetLocalIP(t *testing.T) {
 	ip := GetLocalIP()
 	if ip == "" {

@@ -67,6 +67,7 @@ func installService(execPath string) {
 func main() {
 	centerURL := flag.String("center", "", "Center service URL (e.g. http://localhost:8080)")
 	nodeName := flag.String("name", "", "Node display name (default: hostname)")
+	nodeIP := flag.String("ip", "", "Reported node IP (default: outbound IP toward center)")
 	dataDir := flag.String("data", "./data", "Data directory for node config")
 	installFlag := flag.Bool("install", false, "Install as system service")
 	domain := flag.String("domain", "", "Auto-discovery domain (e.g. mycompany.com)")
@@ -115,6 +116,7 @@ func main() {
 
 	// 创建上报器
 	rep := reporter.NewReporter(centerAddr, cfg.NodeID, *nodeName)
+	rep.NodeIP = *nodeIP
 	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
 	rep.SetTokenHandler(func(token string) {
 		cfg.Token = token

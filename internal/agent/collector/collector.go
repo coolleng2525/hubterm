@@ -2,7 +2,10 @@ package collector
 
 import (
 	"net"
+	"net/url"
+	"os"
 	"runtime"
+	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -118,6 +121,48 @@ func GetLocalIP() string {
 		}
 	}
 	return "unknown"
+}
+
+// GetOutboundIP returns the local IPv4 used to reach host (UDP dial trick).
+func GetOutboundIP(host string) string {
+	if host == "" {
+		return ""
+	}
+	conn, err := net.DialTimeout("udp", net.JoinHostPort(host, "80"), 2*time.Second)
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	addr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok || addr.IP == nil {
+		return ""
+	}
+	if ip4 := addr.IP.To4(); ip4 != nil {
+		return ip4.String()
+	}
+	return ""
+}
+
+// LocalIPForCenter picks the reported node IP: explicit override, outbound toward
+// center, then first non-loopback IPv4.
+func LocalIPForCenter(centerURL, override string) string {
+	if override != "" {
+		return override
+	}
+	if env := os.Getenv("HUBTERM_NODE_IP"); env != "" {
+		return env
+	}
+	if centerURL != "" {
+		if u, err := url.Parse(centerURL); err == nil {
+			host := u.Hostname()
+			if host != "" && host != "localhost" && host != "127.0.0.1" {
+				if ip := GetOutboundIP(host); ip != "" {
+					return ip
+				}
+			}
+		}
+	}
+	return GetLocalIP()
 }
 
 type SerialPortInfo struct {

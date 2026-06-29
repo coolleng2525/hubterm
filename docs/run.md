@@ -21,3 +21,16 @@
 ▸ Thought for 5s, 253 tokens
   Prioritizing Tool Usage
   推送成功！代码和新的 Tag  tabby-hubterm-v1.1.8  都已经成功推送到 GitHub 仓库中了。
+
+
+
+  # 部署二进制
+python3 scripts/deploy-agent-t2.py deploy
+# 部署并启动
+python3 scripts/deploy-agent-t2.py deploy --start
+# 启动 / 停止 / 重启 / 状态
+python3 scripts/deploy-agent-t2.py start 10.223.40.20 10.223.40.21
+python3 scripts/deploy-agent-t2.py stop  10.223.40.20 10.223.40.21
+python3 scripts/deploy-agent-t2.py restart 10.223.40.20 10.223.40.21
+python3 scripts/deploy-agent-t2.py status 10.223.40.21
+python3 scripts/deploy-agent-t2.py status 10.223.40.21

@@ -17,6 +17,7 @@ type Reporter struct {
 	CenterURL string
 	NodeID    string
 	NodeName  string
+	NodeIP    string
 	NodeToken string
 	Client    *http.Client
 	onToken   func(string)
@@ -59,7 +60,7 @@ func (r *Reporter) Report() error {
 		NodeID:        r.NodeID,
 		Source:        "agent",
 		Name:          r.NodeName,
-		IP:            collector.GetLocalIP(),
+		IP:            collector.LocalIPForCenter(r.CenterURL, r.NodeIP),
 		Hostname:      sysInfo.Hostname,
 		OS:            sysInfo.OS,
 		OSVersion:     sysInfo.OSVersion,
