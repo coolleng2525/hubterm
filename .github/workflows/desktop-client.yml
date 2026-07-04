@@ -1,0 +1,49 @@
+name: Desktop Client
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'clients/hubterm-desktop/**'
+      - '.github/workflows/desktop-client.yml'
+  pull_request:
+    paths:
+      - 'clients/hubterm-desktop/**'
+      - '.github/workflows/desktop-client.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: clients/hubterm-desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Linux packaging dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfuse2
+        working-directory: .
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+      - name: Package desktop client
+        run: npm run pack
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/

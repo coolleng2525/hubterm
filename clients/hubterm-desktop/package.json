@@ -1,0 +1,48 @@
+{
+  "name": "hubterm-desktop",
+  "version": "0.1.0",
+  "description": "HubTerm desktop terminal client",
+  "main": "src/main.js",
+  "author": "HubTerm",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --publish never",
+    "pack": "electron-builder --dir --publish never"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "xyz.lleng.hubterm.desktop",
+    "productName": "HubTerm Desktop",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    }
+  }
+}

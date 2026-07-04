@@ -2,6 +2,8 @@
 web/node_modules/
 tabby-hubterm-plugin/node_modules/
 tabby-hubterm-plugin/tabby-hubterm-*.tgz
+clients/hubterm-desktop/node_modules/
+clients/hubterm-desktop/dist/
 # web/dist/ is committed for release builds
 
 # Build

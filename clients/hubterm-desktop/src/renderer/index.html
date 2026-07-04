@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HubTerm Desktop</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <section class="brand">
+          <div class="brand-mark">H</div>
+          <div>
+            <h1>HubTerm Desktop</h1>
+            <p id="node-id">Loading node...</p>
+          </div>
+        </section>
+
+        <form id="config-form" class="panel">
+          <div class="panel-heading">
+            <h2>Center</h2>
+            <span id="connection-pill" class="status-pill">Offline</span>
+          </div>
+
+          <label>
+            Center URL
+            <input id="center-url" name="centerUrl" spellcheck="false" autocomplete="off">
+          </label>
+
+          <label>
+            Node name
+            <input id="node-name" name="nodeName" spellcheck="false" autocomplete="off">
+          </label>
+
+          <label>
+            Node token
+            <input id="token" name="token" spellcheck="false" autocomplete="off" placeholder="Auto-registers when blank">
+          </label>
+
+          <label>
+            Report interval
+            <input id="report-interval" name="reportInterval" type="number" min="1" max="60" step="1">
+          </label>
+
+          <div class="button-row">
+            <button id="save-config" type="submit">Save</button>
+            <button id="connect-agent" type="button" class="secondary">Connect</button>
+          </div>
+        </form>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Sessions</h2>
+            <span id="session-count">0</span>
+          </div>
+          <button id="new-terminal" type="button" class="wide">New local shell</button>
+          <div id="session-list" class="session-list" aria-label="Open terminal sessions"></div>
+        </section>
+      </aside>
+
+      <section class="terminal-pane">
+        <header class="terminal-header">
+          <div>
+            <h2 id="terminal-title">No terminal</h2>
+            <p id="terminal-subtitle">Create a local shell to start streaming through HubTerm.</p>
+          </div>
+          <button id="close-terminal" type="button" class="secondary" disabled>Close</button>
+        </header>
+
+        <pre id="terminal-output" class="terminal-output" aria-live="polite"></pre>
+
+        <form id="terminal-input-form" class="terminal-input-row">
+          <input id="terminal-input" placeholder="Type a command and press Enter" autocomplete="off" spellcheck="false" disabled>
+          <button id="send-input" type="submit" disabled>Send</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
