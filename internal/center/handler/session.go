@@ -21,6 +21,12 @@ type SessionCommander interface {
 
 var sessionLog = log.New("session_handler")
 
+type SessionListItem struct {
+	model.Session
+	NodeIP   string `json:"node_ip"`
+	NodeName string `json:"node_name"`
+}
+
 func (h *SessionHandler) List(c *gin.Context) {
 	nodeID := c.Query("node_id")
 	portName := c.Query("port_name")
@@ -38,7 +44,48 @@ func (h *SessionHandler) List(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
-	c.JSON(http.StatusOK, sessions)
+
+	nodeIDs := make([]string, 0, len(sessions))
+	seenNodes := make(map[string]struct{})
+	for _, session := range sessions {
+		if session.NodeID == "" {
+			continue
+		}
+		if _, ok := seenNodes[session.NodeID]; ok {
+			continue
+		}
+		seenNodes[session.NodeID] = struct{}{}
+		nodeIDs = append(nodeIDs, session.NodeID)
+	}
+
+	nodesByID := make(map[string]model.Node)
+	if len(nodeIDs) > 0 {
+		var nodes []model.Node
+		if err := h.DB.Where("node_id IN ?", nodeIDs).Find(&nodes).Error; err != nil {
+			sessionLog.Error("failed to load session nodes", log.Err(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			return
+		}
+		for _, node := range nodes {
+			nodesByID[node.NodeID] = node
+		}
+	}
+
+	items := make([]SessionListItem, 0, len(sessions))
+	for _, session := range sessions {
+		item := SessionListItem{Session: session}
+		if node, ok := nodesByID[session.NodeID]; ok {
+			item.NodeIP = node.IP
+			if node.Name != "" {
+				item.NodeName = node.Name
+			} else {
+				item.NodeName = node.Hostname
+			}
+		}
+		items = append(items, item)
+	}
+
+	c.JSON(http.StatusOK, items)
 }
 
 func (h *SessionHandler) Kick(c *gin.Context) {

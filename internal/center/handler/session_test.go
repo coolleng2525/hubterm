@@ -22,6 +22,50 @@ func (f *fakeSessionCommander) SendControlCommand(nodeID, commandType, sessionID
 	return "cmd-test", nil
 }
 
+func TestListSessionsIncludesNodeInfo(t *testing.T) {
+	db := setupTestDB(t)
+	handler := &SessionHandler{DB: db}
+
+	db.Create(&model.Node{
+		NodeID:   "node-001",
+		Name:     "lab-node",
+		IP:       "192.168.1.55",
+		Hostname: "hubterm-lab",
+		Status:   "online",
+	})
+	db.Create(&model.Session{
+		SessionID: "sess-list-001",
+		NodeID:    "node-001",
+		PortName:  "ssh",
+		User:      "admin",
+		Type:      "master",
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/api/sessions", nil)
+
+	handler.List(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp []map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(resp) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(resp))
+	}
+	if resp[0]["node_ip"] != "192.168.1.55" {
+		t.Errorf("expected node_ip, got %v", resp[0]["node_ip"])
+	}
+	if resp[0]["node_name"] != "lab-node" {
+		t.Errorf("expected node_name, got %v", resp[0]["node_name"])
+	}
+}
+
 func TestKickSession(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
 	defer os.Unsetenv("JWT_SECRET")

@@ -1,13 +1,20 @@
 <template>
   <div>
     <div class="terminal-header">
-      <div>
+      <div class="terminal-title-row">
         <el-button link @click="$router.back()">← 返回</el-button>
         <span class="terminal-title">共享终端 · {{ route.params.sessionId }}</span>
         <el-tag :type="connected ? 'success' : 'info'" size="small">
           {{ connected ? '已连接' : '未连接' }}
         </el-tag>
       </div>
+      <div class="connection-actions">
+        <el-button type="warning" size="small" @click="connect">重新连接</el-button>
+        <el-button type="danger" size="small" @click="disconnect">断开</el-button>
+      </div>
+    </div>
+
+    <div class="terminal-toolbar">
       <div class="terminal-actions">
         <el-input
           ref="searchInputRef"
@@ -22,6 +29,9 @@
         <el-checkbox v-model="caseSensitive" size="small" @change="repeatSearch">Aa</el-checkbox>
         <el-button size="small" :disabled="!searchQuery" @click="findPrevious">上一个</el-button>
         <el-button size="small" :disabled="!searchQuery" @click="findNext">下一个</el-button>
+      </div>
+      <div class="terminal-config">
+        <span class="config-label">保留行数</span>
         <el-select
           v-model="scrollback"
           class="scrollback-select"
@@ -31,10 +41,9 @@
         >
           <el-option v-for="option in scrollbackOptions" :key="option" :label="`${option} 行`" :value="option" />
         </el-select>
-        <el-button type="warning" size="small" @click="connect">重新连接</el-button>
-        <el-button type="danger" size="small" @click="disconnect">断开</el-button>
       </div>
     </div>
+
     <div ref="terminalContainer" class="terminal-container"></div>
   </div>
 </template>
@@ -229,16 +238,50 @@ onUnmounted(() => {
   gap: 12px;
   margin-bottom: 10px;
 }
+.terminal-title-row,
+.connection-actions,
+.terminal-toolbar,
+.terminal-actions,
+.terminal-config {
+  display: flex;
+  align-items: center;
+}
+.terminal-title-row {
+  min-width: 0;
+}
 .terminal-title {
   margin: 0 10px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.terminal-actions {
-  display: flex;
-  align-items: center;
+.connection-actions {
+  gap: 8px;
+  flex-shrink: 0;
+}
+.terminal-toolbar {
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+.terminal-actions,
+.terminal-config {
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+}
+.terminal-config {
+  margin-left: auto;
+}
+.config-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .terminal-search {
   width: 190px;
@@ -248,7 +291,7 @@ onUnmounted(() => {
 }
 .terminal-container {
   width: 100%;
-  height: calc(100vh - 180px);
+  height: calc(100vh - 230px);
   min-height: 360px;
   background: #1e1e1e;
 }

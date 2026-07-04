@@ -10,14 +10,17 @@
     </div>
 
     <el-table :data="sessions" stripe style="width:100%;margin-top:15px">
-      <el-table-column prop="session_id" label="会话ID" width="200">
+      <el-table-column label="节点/IP" width="190" fixed>
         <template #default="{ row }">
-          <code style="font-size:12px">{{ row.session_id?.substring(0, 12) }}...</code>
+          <div class="node-cell">
+            <strong>{{ row.node_ip || '-' }}</strong>
+            <span>{{ row.node_name || shortId(row.node_id, 12) }}</span>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column prop="node_id" label="节点ID" width="200">
+      <el-table-column prop="session_id" label="会话ID" width="170">
         <template #default="{ row }">
-          <code style="font-size:12px">{{ row.node_id?.substring(0, 12) }}...</code>
+          <code style="font-size:12px">{{ shortId(row.session_id, 12) }}</code>
         </template>
       </el-table-column>
       <el-table-column label="备注" min-width="150">
@@ -40,8 +43,9 @@
           {{ formatTime(row.connected_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="210" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
+          <el-button type="success" link size="small" @click="openSharedTerminal(row)">共享终端</el-button>
           <el-button type="primary" link size="small" @click="handleRename(row)">重命名</el-button>
           <el-button type="primary" link size="small" @click="handleAssignMaster(row)">设为主控</el-button>
           <el-button type="danger" link size="small" @click="handleKick(row)">踢掉</el-button>
@@ -53,9 +57,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSessions, kickSession, assignMaster, renameSession } from '../api'
 
+const router = useRouter()
 const sessions = ref([])
 const nodeFilter = ref('')
 const portFilter = ref('')
@@ -74,8 +80,16 @@ function formatTime(t) {
   return new Date(t).toLocaleString('zh-CN')
 }
 
+function shortId(value, length = 8) {
+  return value ? `${value.substring(0, length)}...` : '-'
+}
+
 function sessionLabel(session) {
   return session.display_name || `${session.port_name || '会话'} · ${session.user || '未知用户'}`
+}
+
+function openSharedTerminal(session) {
+  router.push(`/shared-terminal/${session.node_id}/${session.session_id}`)
 }
 
 async function handleRename(session) {
@@ -119,3 +133,23 @@ async function handleAssignMaster(session) {
 
 onMounted(fetchSessions)
 </script>
+
+<style scoped>
+.node-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.node-cell strong {
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.node-cell span {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+</style>
