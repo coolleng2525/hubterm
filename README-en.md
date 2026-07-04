@@ -112,6 +112,7 @@ hubterm/
 | GET | /api/serial-ports | Serial port list |
 | GET | /api/sessions | Session list |
 | POST | /api/sessions/:id/kick | Kick session |
+| PUT | /api/sessions/:id/rename | Rename session |
 | POST | /api/sessions/:id/assign-master | Assign master |
 | GET | /api/audit-logs | Audit logs |
 | WS | /api/ws | WebSocket real-time push |

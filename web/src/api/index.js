@@ -82,6 +82,10 @@ export function assignMaster(id) {
   return api.post(`/sessions/${id}/assign-master`)
 }
 
+export function renameSession(id, displayName) {
+  return api.put(`/sessions/${id}/rename`, { display_name: displayName })
+}
+
 export function getAuditLogs(params) {
   return api.get('/audit-logs', { params })
 }

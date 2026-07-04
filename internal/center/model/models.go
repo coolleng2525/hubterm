@@ -77,6 +77,7 @@ type Session struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	SessionID   string    `gorm:"uniqueIndex;size:64;not null" json:"session_id"`
 	NodeID      string    `gorm:"index;size:64;not null" json:"node_id"`
+	DisplayName string    `gorm:"size:128" json:"display_name"`
 	PortName    string    `gorm:"size:64;not null" json:"port_name"`
 	User        string    `gorm:"size:64" json:"user"`
 	Type        string    `gorm:"size:32;not null;default:watcher" json:"type"` // master/watcher

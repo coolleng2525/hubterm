@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -159,6 +160,65 @@ func TestAssignMaster(t *testing.T) {
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected 404, got %d", w.Code)
+		}
+	})
+}
+
+func TestRenameSession(t *testing.T) {
+	db := setupTestDB(t)
+	handler := &SessionHandler{DB: db}
+
+	db.Create(&model.Session{
+		SessionID: "sess-rename-001",
+		NodeID:    "node-001",
+		PortName:  "/dev/ttyUSB0",
+		User:      "admin",
+		Type:      "master",
+	})
+
+	t.Run("rename existing session", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body := bytes.NewBufferString(`{"display_name":"客户A交换机"}`)
+		c.Request = httptest.NewRequest("PUT", "/api/sessions/sess-rename-001/rename", body)
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Params = []gin.Param{{Key: "id", Value: "sess-rename-001"}}
+		c.Set("username", "admin")
+
+		handler.Rename(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var session model.Session
+		if err := db.Where("session_id = ?", "sess-rename-001").First(&session).Error; err != nil {
+			t.Fatalf("failed to reload session: %v", err)
+		}
+		if session.DisplayName != "客户A交换机" {
+			t.Errorf("expected display name updated, got %q", session.DisplayName)
+		}
+	})
+
+	t.Run("trim and clear display name", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body := bytes.NewBufferString(`{"display_name":"   "}`)
+		c.Request = httptest.NewRequest("PUT", "/api/sessions/sess-rename-001/rename", body)
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Params = []gin.Param{{Key: "id", Value: "sess-rename-001"}}
+		c.Set("username", "admin")
+
+		handler.Rename(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var session model.Session
+		db.Where("session_id = ?", "sess-rename-001").First(&session)
+		if session.DisplayName != "" {
+			t.Errorf("expected display name cleared, got %q", session.DisplayName)
 		}
 	})
 }

@@ -225,7 +225,18 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		nodeLog.Error("failed to delete stale ports", log.Err(err), log.String("node_id", report.NodeID))
 	}
 
-	// sync sessions: delete old, insert new
+	var existingSessions []model.Session
+	displayNames := make(map[string]string)
+	if err := h.DB.Where("node_id = ?", report.NodeID).Find(&existingSessions).Error; err != nil {
+		nodeLog.Error("failed to load existing sessions", log.Err(err), log.String("node_id", report.NodeID))
+	}
+	for _, session := range existingSessions {
+		if session.DisplayName != "" {
+			displayNames[session.SessionID] = session.DisplayName
+		}
+	}
+
+	// sync sessions: delete old, insert new, preserving operator display names
 	// FIXED: check Delete error
 	if err := h.DB.Where("node_id = ?", report.NodeID).Delete(&model.Session{}).Error; err != nil {
 		nodeLog.Error("failed to delete old sessions", log.Err(err), log.String("node_id", report.NodeID))
@@ -234,6 +245,7 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		session := model.Session{
 			SessionID:   s.SessionID,
 			NodeID:      report.NodeID,
+			DisplayName: displayNames[s.SessionID],
 			PortName:    s.PortName,
 			User:        s.User,
 			Type:        s.Type,

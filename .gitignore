@@ -44,3 +44,5 @@ config.yaml
 data/
 .cursor
 dist/
+!web/dist/
+!web/dist/**

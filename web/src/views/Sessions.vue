@@ -20,6 +20,11 @@
           <code style="font-size:12px">{{ row.node_id?.substring(0, 12) }}...</code>
         </template>
       </el-table-column>
+      <el-table-column label="备注" min-width="150">
+        <template #default="{ row }">
+          <span>{{ sessionLabel(row) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="port_name" label="端口" width="120" />
       <el-table-column prop="user" label="用户" width="100" />
       <el-table-column label="类型" width="80">
@@ -35,8 +40,9 @@
           {{ formatTime(row.connected_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
+          <el-button type="primary" link size="small" @click="handleRename(row)">重命名</el-button>
           <el-button type="primary" link size="small" @click="handleAssignMaster(row)">设为主控</el-button>
           <el-button type="danger" link size="small" @click="handleKick(row)">踢掉</el-button>
         </template>
@@ -47,8 +53,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getSessions, kickSession, assignMaster } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getSessions, kickSession, assignMaster, renameSession } from '../api'
 
 const sessions = ref([])
 const nodeFilter = ref('')
@@ -66,6 +72,29 @@ async function fetchSessions() {
 function formatTime(t) {
   if (!t) return '-'
   return new Date(t).toLocaleString('zh-CN')
+}
+
+function sessionLabel(session) {
+  return session.display_name || `${session.port_name || '会话'} · ${session.user || '未知用户'}`
+}
+
+async function handleRename(session) {
+  try {
+    const { value } = await ElMessageBox.prompt('给这个会话设置一个容易识别的备注', '重命名会话', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputValue: session.display_name || '',
+      inputPlaceholder: '例如：客户A交换机',
+      inputValidator: value => (value || '').trim().length <= 128 || '备注不能超过 128 个字符',
+    })
+    await renameSession(session.id || session.session_id, value || '')
+    ElMessage.success('会话备注已更新')
+    fetchSessions()
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('重命名失败')
+    }
+  }
 }
 
 async function handleKick(session) {

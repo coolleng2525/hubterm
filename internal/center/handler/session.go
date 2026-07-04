@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
@@ -83,6 +84,56 @@ func (h *SessionHandler) Kick(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{"success": true, "cmd_id": cmdID, "status": "pending"})
+}
+
+func (h *SessionHandler) Rename(c *gin.Context) {
+	id := c.Param("id")
+	username, _ := c.Get("username")
+
+	var req struct {
+		DisplayName string `json:"display_name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	displayName := strings.TrimSpace(req.DisplayName)
+	if len(displayName) > 128 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "display_name is too long"})
+		return
+	}
+
+	var session model.Session
+	if err := h.DB.Where("session_id = ? OR id = ?", id, id).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+
+	if err := h.DB.Model(&session).Update("display_name", displayName).Error; err != nil {
+		sessionLog.Error("failed to rename session", log.Err(err), log.String("session_id", session.SessionID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	session.DisplayName = displayName
+
+	user, _ := username.(string)
+	sessionLog.Info("session renamed",
+		log.String("username", user),
+		log.String("session_id", session.SessionID),
+		log.String("display_name", displayName),
+	)
+
+	if err := model.GetDB().Create(&model.AuditLog{
+		User:   user,
+		Action: "rename_session",
+		Target: session.SessionID,
+		Detail: "Renamed session on " + session.PortName + " to " + displayName,
+	}).Error; err != nil {
+		sessionLog.Error("failed to create audit log", log.Err(err))
+	}
+
+	c.JSON(http.StatusOK, session)
 }
 
 func (h *SessionHandler) AssignMaster(c *gin.Context) {

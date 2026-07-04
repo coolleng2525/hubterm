@@ -115,6 +115,7 @@ hubterm/
 | GET | /api/serial-ports | 串口列表 |
 | GET | /api/sessions | 会话列表 |
 | POST | /api/sessions/:id/kick | 踢掉会话 |
+| PUT | /api/sessions/:id/rename | 重命名会话 |
 | POST | /api/sessions/:id/assign-master | 指派主控 |
 | GET | /api/audit-logs | 审计日志 |
 | WS | /api/ws | WebSocket 实时推送 |

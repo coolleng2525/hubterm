@@ -137,6 +137,7 @@ func main() {
 
 		api.GET("/sessions", sessionH.List)
 		api.POST("/sessions/:id/kick", middleware.OperatorRequired(), sessionH.Kick)
+		api.PUT("/sessions/:id/rename", middleware.OperatorRequired(), sessionH.Rename)
 		api.POST("/sessions/:id/assign-master", middleware.OperatorRequired(), sessionH.AssignMaster)
 
 		api.GET("/audit-logs", auditH.List)
