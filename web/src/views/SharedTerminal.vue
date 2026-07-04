@@ -8,7 +8,29 @@
           {{ connected ? '已连接' : '未连接' }}
         </el-tag>
       </div>
-      <div>
+      <div class="terminal-actions">
+        <el-input
+          ref="searchInputRef"
+          v-model="searchQuery"
+          class="terminal-search"
+          clearable
+          size="small"
+          placeholder="查找终端内容"
+          @keyup.enter="findNext"
+          @clear="clearSearch"
+        />
+        <el-checkbox v-model="caseSensitive" size="small" @change="repeatSearch">Aa</el-checkbox>
+        <el-button size="small" :disabled="!searchQuery" @click="findPrevious">上一个</el-button>
+        <el-button size="small" :disabled="!searchQuery" @click="findNext">下一个</el-button>
+        <el-select
+          v-model="scrollback"
+          class="scrollback-select"
+          size="small"
+          title="终端保留行数"
+          @change="applyScrollback"
+        >
+          <el-option v-for="option in scrollbackOptions" :key="option" :label="`${option} 行`" :value="option" />
+        </el-select>
         <el-button type="warning" size="small" @click="connect">重新连接</el-button>
         <el-button type="danger" size="small" @click="disconnect">断开</el-button>
       </div>
@@ -22,14 +44,28 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
+import { SearchAddon } from 'xterm-addon-search'
 import 'xterm/css/xterm.css'
 
 const route = useRoute()
 const terminalContainer = ref(null)
+const searchInputRef = ref(null)
+const searchQuery = ref('')
+const caseSensitive = ref(false)
+const scrollbackStorageKey = 'hubterm.sharedTerminal.scrollback'
+const defaultScrollback = 10000
+const scrollbackOptions = [1000, 5000, 10000, 50000]
+const scrollback = ref(loadScrollback())
 const connected = ref(false)
 let term
 let fitAddon
+let searchAddon
 let ws
+
+function loadScrollback() {
+  const saved = Number(localStorage.getItem(scrollbackStorageKey))
+  return scrollbackOptions.includes(saved) ? saved : defaultScrollback
+}
 
 function bytesToBase64(value) {
   const bytes = new TextEncoder().encode(value)
@@ -109,15 +145,60 @@ function handleResize() {
   fitAddon?.fit()
 }
 
+function applyScrollback() {
+  localStorage.setItem(scrollbackStorageKey, String(scrollback.value))
+  if (term) {
+    term.options.scrollback = scrollback.value
+  }
+}
+
+function searchOptions() {
+  return { caseSensitive: caseSensitive.value }
+}
+
+function findNext() {
+  if (!searchQuery.value) return
+  searchAddon?.findNext(searchQuery.value, searchOptions())
+}
+
+function findPrevious() {
+  if (!searchQuery.value) return
+  searchAddon?.findPrevious(searchQuery.value, searchOptions())
+}
+
+function repeatSearch() {
+  if (searchQuery.value) findNext()
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  term?.clearSelection()
+  term?.focus()
+}
+
+function handleKeydown(event) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+    event.preventDefault()
+    searchInputRef.value?.focus()
+    searchInputRef.value?.select?.()
+  }
+  if (event.key === 'Escape' && searchQuery.value) {
+    clearSearch()
+  }
+}
+
 onMounted(() => {
   term = new Terminal({
     cursorBlink: true,
     fontSize: 14,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    scrollback: scrollback.value,
     theme: { background: '#1e1e1e', foreground: '#d4d4d4' },
   })
   fitAddon = new FitAddon()
+  searchAddon = new SearchAddon()
   term.loadAddon(fitAddon)
+  term.loadAddon(searchAddon)
   term.open(terminalContainer.value)
   fitAddon.fit()
   term.onData(data => {
@@ -128,11 +209,13 @@ onMounted(() => {
     })
   })
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleKeydown)
   connect()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleKeydown)
   disconnect()
   term?.dispose()
 })
@@ -143,11 +226,25 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 10px;
 }
 .terminal-title {
   margin: 0 10px;
   font-weight: 600;
+}
+.terminal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.terminal-search {
+  width: 190px;
+}
+.scrollback-select {
+  width: 112px;
 }
 .terminal-container {
   width: 100%;
