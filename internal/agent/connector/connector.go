@@ -19,13 +19,20 @@ type CenterCommand struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command   string `json:"command,omitempty"`
-		Timeout   int    `json:"timeout,omitempty"` // 秒
-		SessionID string `json:"session_id,omitempty"`
-		Data      string `json:"data,omitempty"`
-		Shell     string `json:"shell,omitempty"`
-		Rows      int    `json:"rows,omitempty"`
-		Cols      int    `json:"cols,omitempty"`
+		Command     string `json:"command,omitempty"`
+		Timeout     int    `json:"timeout,omitempty"` // 秒
+		SessionID   string `json:"session_id,omitempty"`
+		Data        string `json:"data,omitempty"`
+		Shell       string `json:"shell,omitempty"`
+		Rows        int    `json:"rows,omitempty"`
+		Cols        int    `json:"cols,omitempty"`
+		DisplayName string `json:"display_name,omitempty"`
+		Host        string `json:"host,omitempty"`
+		Port        int    `json:"port,omitempty"`
+		Username    string `json:"username,omitempty"`
+		Password    string `json:"password,omitempty"`
+		PrivateKey  string `json:"private_key,omitempty"`
+		Passphrase  string `json:"passphrase,omitempty"`
 	} `json:"payload,omitempty"`
 }
 
@@ -152,7 +159,7 @@ func (c *Connector) connectOnce() error {
 		switch msg.Type {
 		case "ping":
 			c.sendPong()
-		case "exec", "shell_start", "write", "shell_close", "resize":
+		case "exec", "shell_start", "ssh_start", "write", "shell_close", "resize":
 			c.handleExecCommand(msg.Data)
 		default:
 			log.Printf("[connector] unknown message type: %s", msg.Type)

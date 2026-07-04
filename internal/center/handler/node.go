@@ -242,10 +242,14 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		nodeLog.Error("failed to delete old sessions", log.Err(err), log.String("node_id", report.NodeID))
 	}
 	for _, s := range report.Sessions {
+		displayName := displayNames[s.SessionID]
+		if displayName == "" {
+			displayName = strings.TrimSpace(s.DisplayName)
+		}
 		session := model.Session{
 			SessionID:   s.SessionID,
 			NodeID:      report.NodeID,
-			DisplayName: displayNames[s.SessionID],
+			DisplayName: displayName,
 			PortName:    s.PortName,
 			User:        s.User,
 			Type:        s.Type,

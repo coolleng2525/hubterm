@@ -51,6 +51,29 @@
           连接 {{ node.ip }}:22
         </span>
       </div>
+      <el-divider />
+      <el-form :inline="true" :model="sshForm" size="small">
+        <el-form-item label="备注">
+          <el-input v-model="sshForm.display_name" placeholder="例如：openclaw" style="width:150px" />
+        </el-form-item>
+        <el-form-item label="Host">
+          <el-input v-model="sshForm.host" placeholder="192.168.1.55" style="width:150px" />
+        </el-form-item>
+        <el-form-item label="端口">
+          <el-input-number v-model="sshForm.port" :min="1" :max="65535" controls-position="right" style="width:110px" />
+        </el-form-item>
+        <el-form-item label="用户">
+          <el-input v-model="sshForm.username" placeholder="root" style="width:120px" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="sshForm.password" type="password" show-password style="width:150px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="success" :disabled="node.status !== 'online'" @click="openAgentSSH">
+            Agent SSH
+          </el-button>
+        </el-form-item>
+      </el-form>
     </el-card>
 
     <el-card style="margin-bottom:20px">
@@ -118,7 +141,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getNode, kickSession, assignMaster, renameSession, startLocalShell } from '../api'
+import { getNode, kickSession, assignMaster, renameSession, startLocalShell, startAgentSSH } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -126,6 +149,13 @@ const node = ref(null)
 const ports = ref([])
 const sessions = ref([])
 const selectedShell = ref('')
+const sshForm = ref({
+  display_name: '',
+  host: '',
+  port: 22,
+  username: 'root',
+  password: '',
+})
 const shells = computed(() => { try { return JSON.parse(node.value?.shells || '[]') } catch { return [] } })
 
 async function fetchNode() {
@@ -135,6 +165,7 @@ async function fetchNode() {
     ports.value = res.data.ports
     sessions.value = res.data.sessions
     if (!selectedShell.value && shells.value.length) selectedShell.value = shells.value[0].id
+    if (!sshForm.value.host) sshForm.value.host = node.value?.ip || ''
   } catch (e) {
     console.error(e)
   }
@@ -155,6 +186,19 @@ async function openLocalShell() {
     router.push(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '无法启动本机终端')
+  }
+}
+
+async function openAgentSSH() {
+  try {
+    const response = await startAgentSSH(node.value.node_id, {
+      ...sshForm.value,
+      rows: 24,
+      cols: 100,
+    })
+    router.push(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '无法启动 Agent SSH')
   }
 }
 

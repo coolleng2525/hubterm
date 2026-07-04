@@ -17,6 +17,7 @@ import (
 	"github.com/coolleng2525/hubterm/internal/agent/discovery"
 	"github.com/coolleng2525/hubterm/internal/agent/executor"
 	"github.com/coolleng2525/hubterm/internal/agent/localshell"
+	"github.com/coolleng2525/hubterm/internal/agent/remotessh"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
 	"github.com/coolleng2525/hubterm/internal/agent/service"
 	"github.com/coolleng2525/hubterm/internal/pkg/session"
@@ -114,9 +115,17 @@ func main() {
 
 	log.Printf("Agent starting: node_id=%s center=%s name=%s", cfg.NodeID, centerAddr, *nodeName)
 
+	shellManager := localshell.NewManager()
+	sshManager := remotessh.NewManager()
+
 	// 创建上报器
 	rep := reporter.NewReporter(centerAddr, cfg.NodeID, *nodeName)
 	rep.NodeIP = *nodeIP
+	rep.SetSessionProvider(func() []hubtermproto.SessionInfo {
+		sessions := shellManager.List()
+		sessions = append(sessions, sshManager.List()...)
+		return sessions
+	})
 	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
 	rep.SetTokenHandler(func(token string) {
 		cfg.Token = token
@@ -140,7 +149,6 @@ func main() {
 
 	// 建立 WebSocket 连接
 	// 注册命令处理器
-	shellManager := localshell.NewManager()
 	conn.SetCommandHandler(func(cmd *connector.CenterCommand) {
 		log.Printf("Received command: id=%s type=%s command=%s",
 			cmd.ID, cmd.Type, cmd.Payload.Command)
@@ -166,15 +174,41 @@ func main() {
 			if err != nil {
 				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte(err.Error()+"\r\n")))
 			}
+		case "ssh_start":
+			err := sshManager.Start(remotessh.Config{
+				SessionID:   cmd.Payload.SessionID,
+				DisplayName: cmd.Payload.DisplayName,
+				Host:        cmd.Payload.Host,
+				Port:        cmd.Payload.Port,
+				Username:    cmd.Payload.Username,
+				Password:    cmd.Payload.Password,
+				PrivateKey:  cmd.Payload.PrivateKey,
+				Passphrase:  cmd.Payload.Passphrase,
+				Rows:        cmd.Payload.Rows,
+				Cols:        cmd.Payload.Cols,
+			}, func(data []byte) {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString(data))
+			}, func(err error) {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte("\r\nSSH session exited\r\n")))
+			})
+			if err != nil {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString([]byte("SSH error: "+err.Error()+"\r\n")))
+				_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, Stderr: err.Error(), ExitCode: 1})
+				return
+			}
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 		case "write":
 			data, err := base64.StdEncoding.DecodeString(cmd.Payload.Data)
 			if err == nil {
-				_ = shellManager.Write(cmd.Payload.SessionID, data)
+				if err := shellManager.Write(cmd.Payload.SessionID, data); err != nil {
+					_ = sshManager.Write(cmd.Payload.SessionID, data)
+				}
 			}
 		case "shell_close":
 			shellManager.Close(cmd.Payload.SessionID)
+			sshManager.Close(cmd.Payload.SessionID)
 		case "resize":
-			// Pipe-based fallback has no terminal resize; ConPTY can implement this later.
+			_ = sshManager.Resize(cmd.Payload.SessionID, cmd.Payload.Rows, cmd.Payload.Cols)
 		case "exec":
 			timeout := time.Duration(cmd.Payload.Timeout) * time.Second
 			if timeout <= 0 {
@@ -210,6 +244,8 @@ func main() {
 
 		case "kick_session":
 			session.GlobalSessionManager.Remove(cmd.Payload.SessionID)
+			shellManager.Close(cmd.Payload.SessionID)
+			sshManager.Close(cmd.Payload.SessionID)
 			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 
 		case "assign_master":

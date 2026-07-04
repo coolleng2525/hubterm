@@ -5,11 +5,16 @@ import (
 	"io"
 	"os/exec"
 	"sync"
+	"time"
+
+	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
 )
 
 type Session struct {
-	cmd   *exec.Cmd
-	stdin io.WriteCloser
+	cmd         *exec.Cmd
+	stdin       io.WriteCloser
+	shellID     string
+	connectedAt time.Time
 }
 type Manager struct {
 	mu       sync.RWMutex
@@ -45,7 +50,7 @@ func (m *Manager) Start(sessionID, shellID, path string, output func([]byte), ex
 		return err
 	}
 	m.mu.Lock()
-	m.sessions[sessionID] = &Session{cmd: cmd, stdin: stdin}
+	m.sessions[sessionID] = &Session{cmd: cmd, stdin: stdin, shellID: shellID, connectedAt: time.Now()}
 	m.mu.Unlock()
 	read := func(r io.Reader) {
 		buf := make([]byte, 32*1024)
@@ -63,6 +68,28 @@ func (m *Manager) Start(sessionID, shellID, path string, output func([]byte), ex
 	go read(stderr)
 	go func() { err := cmd.Wait(); m.mu.Lock(); delete(m.sessions, sessionID); m.mu.Unlock(); exited(err) }()
 	return nil
+}
+
+func (m *Manager) List() []hubtermproto.SessionInfo {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	sessions := make([]hubtermproto.SessionInfo, 0, len(m.sessions))
+	for id, s := range m.sessions {
+		portName := "OS default"
+		if s.shellID != "" {
+			portName = s.shellID
+		}
+		sessions = append(sessions, hubtermproto.SessionInfo{
+			SessionID:   id,
+			DisplayName: s.shellID,
+			PortName:    portName,
+			User:        "local",
+			Type:        "master",
+			ClientIP:    "agent",
+			ConnectedAt: s.connectedAt.Unix(),
+		})
+	}
+	return sessions
 }
 
 func (m *Manager) Write(id string, data []byte) error {

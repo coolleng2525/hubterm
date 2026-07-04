@@ -64,6 +64,7 @@ type SerialPortInfo struct {
 // SessionInfo 会话信息
 type SessionInfo struct {
 	SessionID   string `json:"session_id"`
+	DisplayName string `json:"display_name,omitempty"`
 	PortName    string `json:"port_name"`
 	User        string `json:"user"`
 	Type        string `json:"type"` // master/watcher
@@ -113,13 +114,20 @@ type ExecCommand struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command   string `json:"command,omitempty"`
-		Timeout   int    `json:"timeout,omitempty"` // 秒
-		SessionID string `json:"session_id,omitempty"`
-		Data      string `json:"data,omitempty"`
-		Shell     string `json:"shell,omitempty"`
-		Rows      int    `json:"rows,omitempty"`
-		Cols      int    `json:"cols,omitempty"`
+		Command     string `json:"command,omitempty"`
+		Timeout     int    `json:"timeout,omitempty"` // 秒
+		SessionID   string `json:"session_id,omitempty"`
+		Data        string `json:"data,omitempty"`
+		Shell       string `json:"shell,omitempty"`
+		Rows        int    `json:"rows,omitempty"`
+		Cols        int    `json:"cols,omitempty"`
+		DisplayName string `json:"display_name,omitempty"`
+		Host        string `json:"host,omitempty"`
+		Port        int    `json:"port,omitempty"`
+		Username    string `json:"username,omitempty"`
+		Password    string `json:"password,omitempty"`
+		PrivateKey  string `json:"private_key,omitempty"`
+		Passphrase  string `json:"passphrase,omitempty"`
 	} `json:"payload,omitempty"`
 }
 

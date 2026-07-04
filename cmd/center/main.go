@@ -125,6 +125,7 @@ func main() {
 		api.POST("/nodes/:id/command", middleware.OperatorRequired(), nodeH.Command)
 		api.POST("/nodes/:id/exec", middleware.OperatorRequired(), nodeH.ExecCommand)
 		api.POST("/nodes/:id/shell", middleware.OperatorRequired(), nodeH.StartLocalShell)
+		api.POST("/nodes/:id/ssh", middleware.OperatorRequired(), nodeH.StartAgentSSH)
 		api.DELETE("/nodes/:id/shell/:session_id", middleware.OperatorRequired(), nodeH.CloseLocalShell)
 		api.GET("/nodes/:id/exec/:cmd_id", middleware.OperatorRequired(), nodeH.GetExecResult)
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
@@ -257,6 +258,7 @@ func main() {
 	r.POST("/api/logs", handler.NodeTokenRequired(model.GetDB()), auditH.UploadLogs)
 
 	r.GET("/", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		index := filepath.Join("web/dist", "index.html")
 		if _, err := os.Stat(index); err == nil {
 			c.File(index)
@@ -278,6 +280,7 @@ func main() {
 		cleanURLPath := strings.TrimPrefix(filepath.ToSlash(filepath.Clean("/"+c.Request.URL.Path)), "/")
 		requested := filepath.Join(distDir, filepath.FromSlash(cleanURLPath))
 		if info, err := os.Stat(requested); err == nil && !info.IsDir() {
+			c.Header("Cache-Control", "no-cache, must-revalidate")
 			c.File(requested)
 			return
 		}
@@ -286,6 +289,7 @@ func main() {
 			c.JSON(http.StatusNotFound, gin.H{"error": "frontend is not built"})
 			return
 		}
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.File(index)
 	})
 

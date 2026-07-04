@@ -21,6 +21,7 @@ type Reporter struct {
 	NodeToken string
 	Client    *http.Client
 	onToken   func(string)
+	sessions  func() []hubtermproto.SessionInfo
 }
 
 func NewReporter(centerURL, nodeID, nodeName string) *Reporter {
@@ -45,6 +46,10 @@ func (r *Reporter) SetNodeToken(token string) {
 
 func (r *Reporter) SetTokenHandler(handler func(string)) {
 	r.onToken = handler
+}
+
+func (r *Reporter) SetSessionProvider(provider func() []hubtermproto.SessionInfo) {
+	r.sessions = provider
 }
 
 func (r *Reporter) Report() error {
@@ -75,6 +80,9 @@ func (r *Reporter) Report() error {
 		SerialPorts:   make([]hubtermproto.SerialPortInfo, len(ports)),
 		Sessions:      []hubtermproto.SessionInfo{},
 		Shells:        make([]hubtermproto.ShellInfo, len(shells)),
+	}
+	if r.sessions != nil {
+		report.Sessions = r.sessions()
 	}
 	for i, shell := range shells {
 		report.Shells[i] = hubtermproto.ShellInfo{ID: shell.ID, Name: shell.Name, Path: shell.Path}

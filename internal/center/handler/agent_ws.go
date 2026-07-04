@@ -212,10 +212,14 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 			"node_id": nodeID, "port_name": incoming.PortName, "user": incoming.User,
 			"type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
 		}
+		if strings.TrimSpace(incoming.DisplayName) != "" && (result.Error == gorm.ErrRecordNotFound || session.DisplayName == "") {
+			attrs["display_name"] = strings.TrimSpace(incoming.DisplayName)
+		}
 		if result.Error == gorm.ErrRecordNotFound {
 			session = model.Session{
 				SessionID:   incoming.SessionID,
 				NodeID:      nodeID,
+				DisplayName: strings.TrimSpace(incoming.DisplayName),
 				PortName:    incoming.PortName,
 				User:        incoming.User,
 				Type:        incoming.Type,
@@ -283,6 +287,40 @@ func (h *AgentWSHandler) StartLocalShell(nodeID, shellID, sessionID string, rows
 	}
 	h.mu.Lock()
 	h.localSessions[sessionID] = nodeID
+	h.mu.Unlock()
+	return nil
+}
+
+type AgentSSHStartRequest struct {
+	SessionID   string
+	DisplayName string
+	Host        string
+	Port        int
+	Username    string
+	Password    string
+	PrivateKey  string
+	Passphrase  string
+	Rows        int
+	Cols        int
+}
+
+func (h *AgentWSHandler) StartSSHSession(nodeID string, req AgentSSHStartRequest) error {
+	cmd := hubtermproto.ExecCommand{ID: uuid.New().String(), Type: "ssh_start"}
+	cmd.Payload.SessionID = req.SessionID
+	cmd.Payload.DisplayName = req.DisplayName
+	cmd.Payload.Host = req.Host
+	cmd.Payload.Port = req.Port
+	cmd.Payload.Username = req.Username
+	cmd.Payload.Password = req.Password
+	cmd.Payload.PrivateKey = req.PrivateKey
+	cmd.Payload.Passphrase = req.Passphrase
+	cmd.Payload.Rows = req.Rows
+	cmd.Payload.Cols = req.Cols
+	if err := h.sendCommand(nodeID, cmd); err != nil {
+		return err
+	}
+	h.mu.Lock()
+	h.localSessions[req.SessionID] = nodeID
 	h.mu.Unlock()
 	return nil
 }
