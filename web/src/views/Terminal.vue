@@ -383,6 +383,10 @@ function connect() {
         connecting.value = false
         connected.value = true
         term.writeln('\x1b[32mSSH 已连接\x1b[0m')
+        // Auto-send default script after SSH is ready
+        if (selectedScript.value) {
+          setTimeout(() => handleQuickSend(), 500)
+        }
       }
       if (msg.type === 0) {
         connecting.value = false

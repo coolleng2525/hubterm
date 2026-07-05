@@ -268,6 +268,10 @@ function connect() {
       session_id: route.params.sessionId,
     })
     term.writeln('\x1b[32mConnected to shared terminal\x1b[0m')
+    // Auto-send default script after terminal is ready
+    if (selectedScript.value) {
+      setTimeout(() => handleQuickSend(), 500)
+    }
   }
   ws.onmessage = event => {
     try {
