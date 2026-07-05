@@ -34,7 +34,7 @@
       <div class="terminal-sender" style="display:flex;align-items:center;gap:8px;margin-left:15px">
         <span class="config-label">快速发送</span>
         <el-select
-          v-model="selectedScriptSource"
+          v-model="selectedScriptId"
           clearable
           size="small"
           placeholder="选择预设脚本/命令"
@@ -45,7 +45,7 @@
             v-for="script in scripts"
             :key="script.script_id"
             :label="script.name"
-            :value="script.source"
+            :value="script.script_id || script.id"
           />
         </el-select>
         <el-input
@@ -57,7 +57,7 @@
           style="width:250px"
           @keydown.enter.exact.prevent="handleQuickSend"
         />
-        <el-button type="primary" size="small" :disabled="!customSendText" @click="handleQuickSend">发送</el-button>
+        <el-button type="primary" size="small" :disabled="!customSendText && !selectedScript" @click="handleQuickSend">发送</el-button>
       </div>
 
       <div class="terminal-config">
@@ -100,7 +100,7 @@ const connected = ref(false)
 const sessionDisplayName = ref('')
 
 // Quick Send state
-const selectedScriptSource = ref('')
+const selectedScriptId = ref('')
 const customSendText = ref('')
 const scripts = ref([])
 const selectedScript = ref(null)
@@ -133,9 +133,8 @@ async function fetchScripts() {
 
 function handleScriptChange(val) {
   if (val) {
-    const found = scripts.value.find(s => s.source === val)
+    const found = scripts.value.find(s => (s.script_id || s.id) === val)
     selectedScript.value = found || null
-    customSendText.value = val
   } else {
     selectedScript.value = null
   }
@@ -174,12 +173,21 @@ async function sendTextToTerminal(text, language = 'shell') {
 }
 
 async function handleQuickSend() {
-  if (!customSendText.value) return
-  const text = customSendText.value
-  const lang = selectedScript.value ? selectedScript.value.language : 'shell'
+  let text = ''
+  let lang = 'shell'
+  if (selectedScript.value) {
+    text = selectedScript.value.source
+    lang = selectedScript.value.language
+  } else if (customSendText.value) {
+    text = customSendText.value
+  }
+
+  if (!text) return
+
   customSendText.value = ''
-  selectedScriptSource.value = ''
+  selectedScriptId.value = ''
   selectedScript.value = null
+
   await sendTextToTerminal(text, lang)
   term?.focus()
 }

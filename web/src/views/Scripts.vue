@@ -16,11 +16,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="命令内容" min-width="250">
-          <template #default="{ row }">
-            <pre style="margin:0;font-family:monospace;font-size:12px;background:#f5f7fa;padding:5px;border-radius:4px;max-height:80px;overflow:auto">{{ row.source }}</pre>
-          </template>
-        </el-table-column>
+
         <el-table-column label="最后更新" width="180">
           <template #default="{ row }">
             {{ formatTime(row.updated_at || row.created_at) }}
