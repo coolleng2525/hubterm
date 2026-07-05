@@ -33,8 +33,18 @@ jobs:
         run: |
           cd tabby-hubterm-plugin
           npm ci --legacy-peer-deps
-          npm run build
+          npm run build > ../build.log 2>&1
           npm pack
+
+      - name: Push debug log on failure
+        if: failure()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout -b debug-log
+          git add build.log || true
+          git commit -m "chore: add debug build log"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/coolleng2525/hubterm.git debug-log --force
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -50,3 +60,4 @@ jobs:
         run: gh release upload "${GITHUB_REF_NAME}" tabby-hubterm-plugin/tabby-hubterm-*.tgz --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
