@@ -12,3 +12,6 @@ auth:
 log:
   level: info
   format: json
+
+presets:
+  dir: presets

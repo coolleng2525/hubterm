@@ -32,6 +32,7 @@ WORKDIR /app
 COPY --from=backend /app/hubterm-center .
 COPY --from=backend /app/hubterm-agent .
 COPY --from=backend /app/web/dist ./web/dist
+COPY --from=backend /app/presets ./presets
 EXPOSE 8080
 VOLUME ["/data"]
 ENV GIN_MODE=release
