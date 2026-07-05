@@ -1,8 +1,22 @@
 import { Injectable, Injector, NgZone } from '@angular/core'
-import { ConfigService, HostAppService } from 'tabby-core'
+import { ConfigService, HostAppService, ProfilesService } from 'tabby-core'
 import { BaseTerminalTabComponent } from 'tabby-terminal'
 import * as childProcess from 'child_process'
 import * as os from 'os'
+import * as fs from 'fs'
+import * as path from 'path'
+
+const { Client } = require('ssh2')
+
+interface BackgroundSession {
+    session_id: string
+    client: any
+    stream: any
+    displayName: string
+    host: string
+    port: number
+    user: string
+}
 
 interface NodeReport {
     node_id: string
@@ -45,6 +59,7 @@ export class HubTermService {
     private reconnectDelay = 1000
     private nodeId = ''
     private attachedTabs: Map<BaseTerminalTabComponent, SessionInfo> = new Map()
+    private bgSessions: Map<string, BackgroundSession> = new Map()
     private stopping = false
     private startPromise: Promise<void> | null = null
     private lastCpuSample: { idle: number, total: number } | null = null
@@ -58,6 +73,7 @@ export class HubTermService {
     ) {
         this.loadNodeId()
         console.log('[HubTerm] service created, nodeId:', this.nodeId)
+        this.start()
     }
 
     private loadNodeId (): void {
@@ -179,6 +195,17 @@ export class HubTermService {
     }
 
     detachTab (tab: BaseTerminalTabComponent): void {
+        const session = this.attachedTabs.get(tab)
+        if (session) {
+            const keyPath = path.join(os.tmpdir(), `hubterm-ssh-key-${session.session_id}`)
+            if (fs.existsSync(keyPath)) {
+                try {
+                    fs.unlinkSync(keyPath)
+                } catch (e) {
+                    console.warn('[HubTerm] failed to delete temp key file:', e)
+                }
+            }
+        }
         this.attachedTabs.delete(tab)
         this.sendReport()
         console.log('[HubTerm] tab detached, total tabs:', this.attachedTabs.size)
@@ -324,13 +351,24 @@ export class HubTermService {
             this.attachedTabs.set(tab, session)
             sessions.push(session)
         }
+        for (const bg of this.bgSessions.values()) {
+            sessions.push({
+                session_id: bg.session_id,
+                display_name: bg.displayName,
+                port_name: `${bg.host}:${bg.port}`,
+                user: bg.user,
+                type: 'master',
+                client_ip: '127.0.0.1',
+                connected_at: Date.now(),
+            })
+        }
         return sessions
     }
 
     private sessionFromTab (tab: BaseTerminalTabComponent): SessionInfo {
         const tabState = tab as any
         if (!tabState.hubtermSessionId) {
-            tabState.hubtermSessionId = this.generateId()
+            tabState.hubtermSessionId = tabState.profile?.hubtermSessionId || this.generateId()
         }
 
         const existing = this.attachedTabs.get(tab)
@@ -479,16 +517,122 @@ export class HubTermService {
 
                 case 'write':
                     if (payload.session_id && payload.data) {
-                        const tab = this.tabForSession(payload.session_id)
-                        if (tab) { this.writeToTab(tab, payload.data) }
+                        const bgSession = this.bgSessions.get(payload.session_id)
+                        if (bgSession) {
+                            const decoded = new TextDecoder().decode(this.base64ToBytes(payload.data))
+                            bgSession.stream.write(decoded)
+                        } else {
+                            const tab = this.tabForSession(payload.session_id)
+                            if (tab) { this.writeToTab(tab, payload.data) }
+                        }
                     }
                     break
+
+                case 'ssh_start': {
+                    const sessionId = payload.session_id
+                    const host = payload.host
+                    const port = payload.port || 22
+                    const username = payload.username || 'root'
+                    const password = payload.password || ''
+                    const privateKey = payload.private_key || ''
+                    const passphrase = payload.passphrase || ''
+                    const displayName = payload.display_name || `${username}@${host}:${port}`
+
+                    if (!host || !sessionId) {
+                        console.warn('[HubTerm] ssh_start: missing host or session_id')
+                        break
+                    }
+
+                    console.log('[HubTerm] starting background SSH session:', sessionId)
+
+                    const conn = new Client()
+                    conn.on('ready', () => {
+                        conn.shell({ rows: payload.rows || 24, cols: payload.cols || 100 }, (err, stream) => {
+                            if (err) {
+                                console.error('[HubTerm] failed to open background SSH shell:', err)
+                                conn.end()
+                                return
+                            }
+
+                            console.log('[HubTerm] background SSH shell opened:', sessionId)
+                            
+                            const bgSession: BackgroundSession = {
+                                session_id: sessionId,
+                                client: conn,
+                                stream: stream,
+                                displayName,
+                                host,
+                                port,
+                                user: username
+                            }
+                            this.bgSessions.set(sessionId, bgSession)
+                            this.sendReport()
+
+                            stream.on('data', (data: Buffer) => {
+                                this.ws?.send(JSON.stringify({
+                                    type: 'terminal_data',
+                                    data: {
+                                        session_id: sessionId,
+                                        direction: 'output',
+                                        data: this.bytesToBase64(data)
+                                    }
+                                }))
+                            })
+
+                            stream.on('close', () => {
+                                console.log('[HubTerm] background SSH stream closed:', sessionId)
+                                conn.end()
+                                this.bgSessions.delete(sessionId)
+                                this.sendReport()
+                            })
+                        })
+                    })
+
+                    conn.on('error', (err) => {
+                        console.error('[HubTerm] background SSH connection error:', err)
+                        this.bgSessions.delete(sessionId)
+                        this.sendReport()
+                    })
+
+                    conn.on('close', () => {
+                        console.log('[HubTerm] background SSH connection closed:', sessionId)
+                        this.bgSessions.delete(sessionId)
+                        this.sendReport()
+                    })
+
+                    const connectConfig: any = {
+                        host,
+                        port,
+                        username,
+                        keepaliveInterval: 10000,
+                        readyTimeout: 20000,
+                    }
+
+                    if (privateKey) {
+                        connectConfig.privateKey = privateKey
+                        if (passphrase) {
+                            connectConfig.passphrase = passphrase
+                        }
+                    } else if (password) {
+                        connectConfig.password = password
+                    }
+
+                    conn.connect(connectConfig)
+                    break
+                }
 
                 case 'disconnect':
                 case 'kick_session':
                     if (payload.session_id) {
-                        const tab = this.tabForSession(payload.session_id)
-                        if (tab) { (tab as any).close() }
+                        const bgSession = this.bgSessions.get(payload.session_id)
+                        if (bgSession) {
+                            bgSession.client.end()
+                            this.bgSessions.delete(payload.session_id)
+                            this.sendReport()
+                        } else {
+                            const tab = this.tabForSession(payload.session_id)
+                            if (tab) { (tab as any).close() }
+                        }
                     }
                     break
 

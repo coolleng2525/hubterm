@@ -51,41 +51,39 @@
           连接 {{ node.ip }}:22
         </span>
       </div>
-      <template v-if="node.source !== 'tabby'">
-        <el-divider />
-        <el-form :inline="true" :model="sshForm" size="small" style="margin-bottom:-18px">
-          <el-form-item label="备注">
-            <el-input v-model.trim="sshForm.display_name" placeholder="例如：openclaw" style="width:160px" />
-          </el-form-item>
-          <el-form-item label="Host">
-            <el-input v-model.trim="sshForm.host" placeholder="192.168.1.55" style="width:150px" />
-          </el-form-item>
-          <el-form-item label="端口">
-            <el-input-number v-model="sshForm.port" :min="1" :max="65535" controls-position="right" style="width:105px" />
-          </el-form-item>
-          <el-form-item label="用户">
-            <el-input v-model.trim="sshForm.username" placeholder="root" style="width:110px" />
-          </el-form-item>
-          <el-form-item label="密码">
-            <el-input v-model="sshForm.password" type="password" show-password placeholder="可留空" style="width:140px" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="success" :disabled="node.status !== 'online'" @click="openAgentSSH">
-              Agent SSH
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </template>
+      <el-divider />
+      <el-form :inline="true" :model="sshForm" size="small" style="margin-bottom:-18px">
+        <el-form-item label="备注">
+          <el-input v-model.trim="sshForm.display_name" placeholder="例如：openclaw" style="width:160px" />
+        </el-form-item>
+        <el-form-item label="Host">
+          <el-input v-model.trim="sshForm.host" placeholder="192.168.1.55" style="width:150px" />
+        </el-form-item>
+        <el-form-item label="端口">
+          <el-input-number v-model="sshForm.port" :min="1" :max="65535" controls-position="right" style="width:105px" />
+        </el-form-item>
+        <el-form-item label="用户">
+          <el-input v-model.trim="sshForm.username" placeholder="root" style="width:110px" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="sshForm.password" type="password" show-password placeholder="可留空" style="width:140px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="success" :disabled="node.status !== 'online'" @click="openAgentSSH">
+            {{ node.source === 'tabby' ? '插件 SSH' : 'Agent SSH' }}
+          </el-button>
+        </el-form-item>
+      </el-form>
     </el-card>
 
     <el-card v-if="node" style="margin-bottom:20px">
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>{{ node.source === 'tabby' ? 'Tabby SSH/终端会话' : 'Agent SSH 配置' }}</span>
-          <el-button v-if="node.source !== 'tabby'" type="primary" size="small" @click="showAddProfileDialog">添加配置</el-button>
+          <span>{{ node.source === 'tabby' ? '插件 SSH 配置' : 'Agent SSH 配置' }}</span>
+          <el-button type="primary" size="small" @click="showAddProfileDialog">添加配置</el-button>
         </div>
       </template>
-      <el-table v-if="node.source !== 'tabby'" :data="profiles" stripe style="width:100%">
+      <el-table :data="profiles" stripe style="width:100%">
         <el-table-column prop="name" label="配置名称" min-width="150" />
         <el-table-column label="连接地址" width="240">
           <template #default="{ row }">
@@ -113,32 +111,6 @@
             <el-button type="danger" link size="small" @click="removeProfile(row.id)">
               删除
             </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-table v-else :data="sessions" stripe style="width:100%">
-        <el-table-column prop="session_id" label="会话ID" width="160">
-          <template #default="{ row }">
-            <code style="font-size:12px">{{ row.session_id?.substring(0, 8) }}...</code>
-          </template>
-        </el-table-column>
-        <el-table-column label="备注" min-width="180">
-          <template #default="{ row }">
-            <span>{{ sessionLabel(row) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="port_name" label="端口" min-width="160" />
-        <el-table-column prop="user" label="用户" width="100" />
-        <el-table-column prop="connected_at" label="连接时间" width="170">
-          <template #default="{ row }">
-            {{ formatTime(row.connected_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button type="success" link size="small" @click="openSharedTerminal(row)">共享终端</el-button>
-            <el-button type="success" link size="small" @click="openSharedTerminalInNewTab(row)">新标签页连接</el-button>
-            <el-button type="primary" link size="small" @click="handleRename(row)">重命名</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -207,7 +179,7 @@
     <!-- 添加/编辑配置对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="editingProfileId ? '编辑 Agent SSH 配置' : '添加 Agent SSH 配置'"
+      :title="editingProfileId ? (node.source === 'tabby' ? '编辑插件 SSH 配置' : '编辑 Agent SSH 配置') : (node.source === 'tabby' ? '添加插件 SSH 配置' : '添加 Agent SSH 配置')"
       width="500px"
       destroy-on-close
     >
@@ -388,7 +360,7 @@ async function openAgentSSH() {
     })
     router.push(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '无法启动 Agent SSH')
+    ElMessage.error(error.response?.data?.error || (node.value.source === 'tabby' ? '无法启动插件 SSH' : '无法启动 Agent SSH'))
   }
 }
 
@@ -489,7 +461,7 @@ async function connectAgentSSH(profile) {
     })
     router.push(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '无法启动 Agent SSH')
+    ElMessage.error(error.response?.data?.error || (node.value.source === 'tabby' ? '无法启动插件 SSH' : '无法启动 Agent SSH'))
   }
 }
 
@@ -507,7 +479,7 @@ async function connectAgentSSHInNewTab(profile) {
     const routeData = router.resolve(`/shared-terminal/${node.value.node_id}/${response.data.session_id}`)
     window.open(routeData.href, '_blank')
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '无法启动 Agent SSH')
+    ElMessage.error(error.response?.data?.error || (node.value.source === 'tabby' ? '无法启动插件 SSH' : '无法启动 Agent SSH'))
   }
 }
 

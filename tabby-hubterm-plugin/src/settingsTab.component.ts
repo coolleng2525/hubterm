@@ -3,7 +3,7 @@ import { ConfigService } from 'tabby-core'
 
 /** @hidden */
 @Component({
-    template: require('./settingsTab.component.pug'),
+    template: require('./settingsTab.component.pug')(),
 })
 export class HubTermSettingsTabComponent {
     constructor (

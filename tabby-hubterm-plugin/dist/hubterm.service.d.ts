@@ -10,6 +10,7 @@ export declare class HubTermService {
     private reconnectDelay;
     private nodeId;
     private attachedTabs;
+    private bgSessions;
     private stopping;
     private startPromise;
     private lastCpuSample;

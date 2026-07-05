@@ -39,6 +39,7 @@
     "webpack-cli": "^4.5.0"
   },
   "dependencies": {
-    "@angular/cdk": "^12.2.13"
+    "@angular/cdk": "^12.2.13",
+    "ssh2": "^1.17.0"
   }
 }
