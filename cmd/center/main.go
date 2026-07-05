@@ -140,6 +140,7 @@ func main() {
 		api.DELETE("/nodes/:id/shell/:session_id", middleware.OperatorRequired(), nodeH.CloseLocalShell)
 		api.GET("/nodes/:id/exec/:cmd_id", middleware.OperatorRequired(), nodeH.GetExecResult)
 		api.POST("/nodes/:id/regenerate-token", middleware.AdminRequired(), nodeH.RegenerateToken)
+		api.DELETE("/nodes/:id", middleware.AdminRequired(), nodeH.Delete)
 
 		api.GET("/serial-ports", portH.List)
 		api.GET("/ssh-profiles", sshProfileH.List)

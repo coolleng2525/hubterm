@@ -101,3 +101,7 @@ export function startLocalShell(nodeId, shell, rows = 24, cols = 100) {
 export function startAgentSSH(nodeId, data) {
   return api.post(`/nodes/${nodeId}/ssh`, data)
 }
+
+export function deleteNode(id) {
+  return api.delete(`/nodes/${id}`)
+}

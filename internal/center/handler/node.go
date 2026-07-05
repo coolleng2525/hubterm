@@ -347,6 +347,71 @@ func (h *NodeHandler) RegenerateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// Delete deletes a node and all its related resources (sessions, ssh profiles, serial ports).
+func (h *NodeHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	username, _ := c.Get("username")
+
+	var node model.Node
+	if err := h.DB.Where("node_id = ? OR id = ?", id, id).First(&node).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+		return
+	}
+
+	tx := h.DB.Begin()
+	// Delete related sessions
+	if err := tx.Where("node_id = ?", node.NodeID).Delete(&model.Session{}).Error; err != nil {
+		tx.Rollback()
+		nodeLog.Error("failed to delete node sessions during delete", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node sessions"})
+		return
+	}
+
+	// Delete related SSH profiles
+	if err := tx.Where("node_id = ?", node.NodeID).Delete(&model.SSHProfile{}).Error; err != nil {
+		tx.Rollback()
+		nodeLog.Error("failed to delete node SSH profiles during delete", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node SSH profiles"})
+		return
+	}
+
+	// Delete related serial ports
+	if err := tx.Where("node_id = ?", node.NodeID).Delete(&model.SerialPort{}).Error; err != nil {
+		tx.Rollback()
+		nodeLog.Error("failed to delete node serial ports during delete", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node serial ports"})
+		return
+	}
+
+	// Delete the node itself
+	if err := tx.Delete(&node).Error; err != nil {
+		tx.Rollback()
+		nodeLog.Error("failed to delete node", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete node"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		nodeLog.Error("failed to commit transaction", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	// Create audit log
+	userStr, _ := username.(string)
+	if err := model.GetDB().Create(&model.AuditLog{
+		User:   userStr,
+		Action: "delete_node",
+		Target: node.NodeID,
+		Detail: "Deleted node: " + node.Name + " (ID: " + node.NodeID + ")",
+	}).Error; err != nil {
+		nodeLog.Error("failed to create audit log", log.Err(err))
+	}
+
+	nodeLog.Info("node deleted", log.String("username", userStr), log.String("node_id", node.NodeID))
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 // GetPendingCommands 获取待执行指令（节点轮询）
 // FIXED: protected by NodeTokenRequired middleware
 func (h *NodeHandler) GetPendingCommands(c *gin.Context) {

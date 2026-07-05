@@ -48,9 +48,10 @@
           {{ formatTime(row.last_seen) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click.stop="goDetail(row)">详情</el-button>
+          <el-button type="danger" link size="small" @click.stop="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -60,7 +61,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getNodes } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getNodes, deleteNode } from '../api'
 
 const router = useRouter()
 const nodes = ref([])
@@ -72,6 +74,27 @@ async function fetchNodes() {
     nodes.value = res.data
   } catch (e) {
     console.error(e)
+  }
+}
+
+async function handleDelete(node) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除节点 "${node.name || node.hostname}" (ID: ${node.node_id}) 及其关联的所有配置和会话吗？`,
+      '警告',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    await deleteNode(node.node_id)
+    ElMessage.success('节点已成功删除')
+    fetchNodes()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.error || '删除失败')
+    }
   }
 }
 
