@@ -1,88 +1,73 @@
-# HubTerm — 串口/SSH 集群管控平台
+# HubTerm — 串口/SSH 集群管控平台 & AI 执行基础设施 Roadmap
 
-## 定位
-AI 的执行环境基础设施层 — 让 AI 发现设备、了解能力、自动路由、执行命令。
+## 🎯 定位
+**AI 智能体的执行环境基础设施层** — 赋予 AI 发现物理/虚拟设备、认知接口与连接能力、自动寻路路由、以及跨节点安全执行复杂脚本的能力。
 
-## 当前进度（2026-06-20 更新）
+---
 
-### ✅ 已完成（全量 P0-P6）
+## 📈 阶段路线图 (2026-07-05 更新)
 
-| 模块 | 说明 | 版本 |
-|------|------|------|
-| Go 中心服务 | Gin + GORM + SQLite，15+ API 端点 | v1.4.0 |
-| Go 节点代理 | 串口扫描 + 系统采集 + 远程命令执行 + WebSocket 长连接 | v1.4.0 |
-| Vue 3 前端 | 10 个页面（含 SharedTerminal），xterm.js Web 终端 | v1.1.0 |
-| 结构化日志 | JSON 格式，含 module/level/node_id/request_id | v1.0.0 |
-| 健康自检 | 组件注册 + 统一执行 | v1.0.0 |
-| 自修复 | 失败重试 + 指数 backoff | v1.0.0 |
-| JWT 认证 | bcrypt + WebSocket 认证 + 节点 token + 权限控制（admin/operator/readonly） | v1.1.0 |
-| 模块测试 | 15+ 测试文件，覆盖认证/节点/会话/终端/协议 | v1.1.0 |
-| GitHub Release | goreleaser，跨平台二进制自动构建 | v1.0.0-v1.4.0 |
-| Docker 部署 | Dockerfile（Alpine + CGO_ENABLED=0）+ docker-compose.yml | v1.3.0 |
-| YAML 配置文件 | 环境变量 > 配置文件 > 默认值 | v1.2.0 |
-| 启动脚本 | `scripts/start-center.sh` | v1.2.0 |
-| WindTerm 改造 | hubterm-v1 分支，`src/HubTerm/` 模块（Agent/Reporter/Commander/TerminalShare） | v1.0.0 |
-| V2 核心模块移植 | SSH 客户端/隧道/会话管理/录制/WebSocket 终端协议（从 Next Terminal） | v1.1.0 |
-| 轻量节点代理 | 远程命令执行 + 系统服务安装（systemd/launchd/Windows Service） | v1.3.0 |
-| 中英文 README | 双语文档 + 参考项目列表 | v1.1.0 |
-| 调研报告 | Next Terminal / Wave / Warp / WindTerm / Tabby / ser2net / Headscale | v1.1.0 |
-| **P1 ser2net 兼容** | Agent 自动检测 ser2net 安装和运行状态 | v1.3.0 |
-| **P1 Graceful Shutdown** | center + agent 均支持 SIGTERM/SIGINT 优雅退出 | v1.3.0 |
-| **P1 Tabby 内置插件** | 已集成到 coolleng2525/tabby fork，构建通过，协议已对齐 | v1.1.0 |
-| **P1 节点安全** | 节点认证防劫持、token 持久化、串口清理 | v1.4.0 |
-| **P1 共享终端** | Tabby ↔ Center ↔ 浏览器 终端流闭环（report/input/output/kick/assign_master） | v1.4.0 |
-| **P2 脚本引擎** | Python 脚本引擎 + 脚本中心（上传/执行/结果查询） | v1.3.0 |
-| **P3 AI 执行环境** | 设备发现 API + 命令执行 API + 执行历史 | v1.3.0 |
-| **P4 网络层** | 拓扑发现/多跳路由(BFS)/自愈检测/拓扑可视化(D3.js) | v1.3.0 |
-| **P5 分布式与隧道** | 虚拟设备名/会话代理/跨中心转发 | v1.3.0 |
-| **P6 设备管理** | 设备CRUD+能力标注+标签/批量命令/设备分组 | v1.3.0 |
-| **节点客户端来源识别** | 识别节点客户端来源（Tabby/WindTerm/Agent/Web） | v1.4.0 |
-| **Windows 本机终端** | 节点详情页启动 CMD/PowerShell/PowerShell 7/Git Bash | v1.4.0 |
-| **纯 Go SQLite** | 切换为 modernc.org/sqlite，支持 CGO_ENABLED=0 构建 | v1.3.0 |
-| **Admin 密码同步** | 启动时从 ADMIN_PASSWORD 同步现有 admin 密码 | v1.3.0 |
+```mermaid
+gantt
+    title HubTerm 发展规划
+    dateFormat  YYYY-MM-DD
+    section 核心演进
+    v1.13 稳定版部署与 AI REST API规范   :done, 2026-06-20, 2026-07-05
+    v1.14 AI 原生接入层 (MCP Server/插件化) :active, 2026-07-06, 2026-07-31
+    v1.15 会话审计与可视化回放 (Asciinema-like) : 2026-08-01, 2026-08-25
+    v1.16 零配置内网穿透与跨中心转发 (FRP 内嵌)   : 2026-08-26, 2026-09-20
+    section 生态联动
+    Tabby 插件 Windows 一键式封装发布     :done, 2026-07-01, 2026-07-05
+    Web UI 流程编排与可视化拓扑呈现        : 2026-09-21, 2026-10-15
+```
 
-### 🔧 进行中
+---
 
-| 模块 | 说明 | 状态 |
-|------|------|------|
-| Tabby 插件联调 | 协议已对齐，构建通过，待真实环境联调 | 🟡 待联调 |
-| WindTerm 构建 | 缺少完整 Qt 工程和闭源部分，无法从当前仓库构建 | 🔴 阻塞 |
-| Tabby Web | fork 待评估 | 📝 待评估 |
-| frp 隧道接入 | 需冷哥提供服务器信息 | ⏳ 等待 |
+## 🚀 最新进度汇总
 
-### 待办
+### 🟢 已完成 (近期更新)
 
-| 任务 | 优先级 |
-|------|--------|
-| Tabby 插件真实环境联调（启动 Center + Tabby，验证终端流） | 🔴 高 |
-| WindTerm 完整源码获取或独立 CMake 工程 | 🟡 中 |
-| 前端构建产物（stash 中的 codex-generated UI）apply 并验证 | 🟡 中 |
-| README-en.md 同步更新 | 🟢 低 |
-| frp 隧道接入 | 🟢 低 |
+| 模块/功能 | 详细说明 | 交付状态 |
+| :--- | :--- | :--- |
+| **Tabby 插件构建修复** | 修复了 Webpack 5 构建中由于 native `.node` 模块引起的语法解析崩溃，在云端流水线实现全自动集成构建。 | ✅ v1.13.2 |
+| **Windows 一键式封装** | 打包 `install.cmd` 与说明，自动将编译插件解压写入用户的 `%APPDATA%/tabby/plugins` 目录。 | ✅ v1.13.2 |
+| **1.55 远程一键部署** | 编写 `deploy-55.sh`。本地一键增量同步，在 1.55 服务器直接就地热编译重启，支持 `.git` 库同调，避免 `Text file busy` 错误。 | ✅ v1.13.3 |
+| **快速发送（Quick Send）** | 在 Web 端终端交互中引入智能 Shebang 检测。针对 Python 或含有 `#!/bin/bash` 的长脚本，全自动在目标机生成 `/tmp/` 临时文件授权执行并完成销毁，防止终端粘滞与格式混乱。 | ✅ v1.13.3 |
+| **预设脚本强制重置** | 支持在服务启动时自动根据 presets 磁盘内容覆盖数据库中旧同名脚本，让脚本修改立刻在系统层生效。 | ✅ v1.13.3 |
+| **Git 追踪与过滤优化** | 将 `web/dist` 和 `tabby-hubterm-plugin/dist` 移出 Git 跟踪并在 `.gitignore` 中声明，规避了本地/远端重复编译冲突。 | ✅ v1.13.3 |
+| **AI 接口对接规范** | 编写了 `docs/ai-integration.md`，提供设备发现、异步执行和脚本上传的 API 规范，以及大模型 Function Calling JSON Schema 模版。 | ✅ v1.13.3 |
 
-### 已放弃/变更方案
+---
 
-| 原计划 | 新方案 | 原因 |
-|--------|--------|------|
-| Tabby 插件发布到 npm | 直接集成到 Tabby 源码作为内置插件 | 外部插件依赖版本冲突，Node 22 不兼容 |
-| 自研 Web 终端 | 考虑接管 Tabby Web（Angular + xterm.js） | 现成方案，原作者已放弃，直接拿来改 |
-| WindTerm 完整集成 | `src/HubTerm/` 定位为独立原型库 | 当前 fork 缺少完整 Qt 工程和闭源部分，无法构建完整应用 |
-| CGO SQLite (go-sqlite3) | 纯 Go SQLite (modernc.org/sqlite) | 支持 CGO_ENABLED=0 构建，Docker/GoReleaser 不再需要 C 工具链 |
+## 🗺️ 未来核心方向规划
 
-## 技术栈
-- 后端: Go (Gin) + SQLite (modernc.org/sqlite, 纯 Go)
-- 前端: Vue 3 + Vite + Element Plus + xterm.js
-- 日志: 结构化 JSON（自研 log 包）
-- 认证: JWT (bcrypt) + WebSocket 子协议鉴权
-- 节点通信: HTTP REST + WebSocket
-- 终端: Tabby（内置插件）+ WindTerm（hubterm-v1 分支，原型阶段）
-- 构建: CGO_ENABLED=0（纯 Go，无需 C 工具链）
+### 1. 🤖 AI 原生接入层 (MCP Server 协议集成) - P0 (7月规划)
+*   **目标**：不再需要针对不同的 AI 平台硬编码 API JSON 模版，让主流 AI 直接将其作为“外挂工具箱”调用。
+*   **规划**：
+    *   在 Go 后端内嵌或独立编写一个轻量级 **MCP (Model Context Protocol) Server**。
+    *   AI 助手通过标准 MCP 协议与 HubTerm Center 对接，实现毫秒级自动暴露 `hubterm_discover`、`hubterm_exec` 等工具函数。
+    *   提供一套基于 Python 的 AI Agent 诊断侧车（Sidecar）样例程序。
 
-## 仓库
-| 项目 | 地址 | 状态 |
-|------|------|------|
-| HubTerm | https://github.com/coolleng2525/hubterm | ✅ 活跃 |
-| WindTerm | https://github.com/coolleng2525/WindTerm/tree/hubterm-v1 | ✅ 已改造 |
-| Tabby | https://github.com/coolleng2525/tabby | ✅ 已集成 |
-| Tabby Web | https://github.com/coolleng2525/tabby-web | 📝 待评估 |
-| NAS | `/mnt/nas/output/git-repos/self/hubterm/` | ✅ 已同步 |
+### 2. 📹 终端审计与录像回放 (Asciinema 协议) - P1 (8月规划)
+*   **目标**：由于 AI 代理拥有自主执行 shell 脚本的权利，必须拥有透明、可视化的执行过程审计审计机制。
+*   **规划**：
+    *   在 Center 端捕获并存储 Agent 的终端双向 I/O 流（采用 Asciinema 兼容格式）。
+    *   在 Web 前端开发一个基于 `xterm.js` 的会话播放器，管理员可一键回放任何 AI 代理或人类操作员的实时终端命令行操作，支持进度条和倍速播放。
+
+### 3. 🌐 零阻碍内网穿透 (内嵌 FRP/Zero-Trust 隧道) - P1 (8-9月规划)
+*   **目标**：解决 Agent 处于严苛防火墙内部、Center 处于公网时，双向反向代理建立 SSH 或串口连接的连通性难题。
+*   **规划**：
+    *   摒弃复杂的外部 frp 运维，直接在 Go Center 和 Go Agent 内部使用 Lib 级别内嵌轻量级 NAT 穿透连接通道。
+    *   Agent 启动时通过长连接全自动完成端口暴露与安全加密隧道建立，实现“零配置反向网络代理”。
+
+### 4. 🎛️ 可视化编排与大屏拓扑 (Workflow & Topology) - P2 (9-10月规划)
+*   **目标**：提供类似 Ansible/Gantt Chart 的多机器并发脚本执行流，以及自动呈现网络设备连接关系。
+*   **规划**：
+    *   **脚本编排流**：允许用户在 Web UI 配置带有逻辑分支的执行流（例如：若步骤 A 检测 CPU 失败，则分支执行 B 重启）。
+    *   **拓扑可视化**：基于 Agent 收集的邻居信息（如 LLDP）或路由跳数，自动使用 D3.js/Vis.js 在前端画出节点与串口设备拓扑图。
+
+---
+
+## 🛠️ 技术栈演进建议
+1.  **数据库**：对于大型集群（100+ 节点），未来考虑在 `config.yaml` 中支持除 SQLite 之外的 MySQL/PostgreSQL 驱动切换。
+2.  **安全加密**：命令下发通道全面启用 TLS 双向认证（mTLS），防止在跨公网代理时命令遭到中间人拦截或篡改。
