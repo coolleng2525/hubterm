@@ -48,5 +48,6 @@ configs/
 data/
 .cursor
 /scripts/deploy-55.sh
+docs/debug_notes.md
 dist/
 
