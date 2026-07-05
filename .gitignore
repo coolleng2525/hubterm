@@ -49,5 +49,8 @@ data/
 .cursor
 /scripts/deploy-55.sh
 docs/debug_notes.md
+docs/talk_with_codex.md
+docs/windterm-tabby-progress-2026-06-20.md
+docs/troubleshooting-admin-login.md
 dist/
 
