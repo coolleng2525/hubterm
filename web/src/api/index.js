@@ -122,9 +122,10 @@ export function deleteScript(id) {
   return api.delete(`/scripts/${id}`)
 }
 
-export function exportScripts(format = 'json') {
+export function exportScripts(format = 'json', password = '') {
   if (format === 'tar.gz' || format === 'tar' || format === 'tgz') {
-    return api.get('/scripts/export', { params: { format }, responseType: 'blob' })
+    const headers = password ? { 'X-HubTerm-Export-Password': password } : undefined
+    return api.get('/scripts/export', { params: { format }, responseType: 'blob', headers })
   }
   return api.get('/scripts/export')
 }
@@ -133,9 +134,10 @@ export function importScripts(bundle) {
   return api.post('/scripts/import', bundle)
 }
 
-export function importScriptsFile(file) {
+export function importScriptsFile(file, password = '') {
   const form = new FormData()
   form.append('file', file)
+  if (password) form.append('password', password)
   return api.post('/scripts/import', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

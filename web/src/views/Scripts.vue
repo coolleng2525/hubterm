@@ -121,11 +121,10 @@
             type="password"
             show-password
             placeholder="设置密码保护导出文件（可选）"
-            :disabled="exportFormat !== 'json'"
           />
         </el-form-item>
         <el-alert v-if="exportFormat !== 'json'" type="info" :closable="false" style="margin-top:8px">
-          tar.gz 资源包会把 manifest.json 和脚本文件一起导出；当前加密仅支持 JSON 格式。
+          tar.gz 资源包会把 manifest.json、脚本文件和版本信息一起导出；设置密码后文件名会自动带 enc。
         </el-alert>
         <el-alert v-if="exportPassword" type="warning" :closable="false" style="margin-top:8px">
           导入时需要输入相同的密码才能解密。请妥善保管密码。
@@ -214,6 +213,7 @@ const importDialogVisible = ref(false)
 const importPreview = ref([])
 const importBundle = ref(null)
 const importRawBundle = ref(null)  // encrypted raw bundle
+const importRawFile = ref(null)
 const importOverwrite = ref(false)
 const importing = ref(false)
 const importNeedsPassword = ref(false)
@@ -315,10 +315,21 @@ async function handleDelete(row) {
 
 // ── Crypto helpers (Web Crypto API, no deps) ──────────────────────────────────
 function b64encode(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
 }
 function b64decode(str) {
-  return Uint8Array.from(atob(str), c => c.charCodeAt(0))
+  const binary = atob(str)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
 }
 
 async function deriveKey(password, salt) {
@@ -363,11 +374,12 @@ async function confirmExport() {
   exporting.value = true
   try {
     if (exportFormat.value !== 'json') {
-      const res = await exportScripts(exportFormat.value)
+      const res = await exportScripts(exportFormat.value, exportPassword.value)
       const blob = new Blob([res.data], { type: exportFormat.value === 'tar' ? 'application/x-tar' : 'application/gzip' })
-      downloadBlob(blob, `hubterm-presets-${new Date().toISOString().slice(0, 10)}.${exportFormat.value}`)
+      const suffix = exportPassword.value ? '-enc' : ''
+      downloadBlob(blob, `hubterm-presets-${new Date().toISOString().slice(0, 10)}${suffix}.${exportFormat.value}`)
       exportDialogVisible.value = false
-      ElMessage.success('导出成功')
+      ElMessage.success(exportPassword.value ? '导出成功（已加密）' : '导出成功')
       return
     }
 
@@ -378,7 +390,8 @@ async function confirmExport() {
     }
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    downloadBlob(blob, `hubterm-presets-${new Date().toISOString().slice(0, 10)}.json`)
+    const suffix = exportPassword.value ? '-enc' : ''
+    downloadBlob(blob, `hubterm-presets-${new Date().toISOString().slice(0, 10)}${suffix}.json`)
     exportDialogVisible.value = false
     ElMessage.success(exportPassword.value ? '导出成功（已加密）' : '导出成功')
   } catch (e) {
@@ -399,6 +412,12 @@ function downloadBlob(blob, filename) {
 
 // Import from file
 function handleImportFile(file) {
+  importBundle.value = null
+  importRawBundle.value = null
+  importRawFile.value = null
+  importPreview.value = []
+  importNeedsPassword.value = false
+  importPassword.value = ''
   const filename = (file.name || '').toLowerCase()
   if (filename.endsWith('.tar') || filename.endsWith('.tar.gz') || filename.endsWith('.tgz')) {
     importTarPackage(file.raw)
@@ -411,6 +430,9 @@ function handleImportFile(file) {
       if (bundle.encrypted) {
         // Encrypted bundle — need password
         importRawBundle.value = bundle
+        importRawFile.value = null
+        importBundle.value = null
+        importPreview.value = []
         importNeedsPassword.value = true
         importPassword.value = ''
         importDialogVisible.value = true
@@ -438,7 +460,17 @@ async function importTarPackage(file) {
     ElMessage.success(`导入完成：新增 ${imported} 条，更新 ${updated} 条，跳过 ${skipped || 0} 条`)
     fetchScripts()
   } catch (e) {
-    ElMessage.error(e.response?.data?.error || '导入失败')
+    const msg = e.response?.data?.error || ''
+    if (msg.includes('requires password')) {
+      importRawFile.value = file
+      importRawBundle.value = null
+      importPreview.value = []
+      importNeedsPassword.value = true
+      importPassword.value = ''
+      importDialogVisible.value = true
+    } else {
+      ElMessage.error(msg || '导入失败')
+    }
   } finally {
     importing.value = false
   }
@@ -451,6 +483,15 @@ async function decryptImportBundle() {
   }
   decrypting.value = true
   try {
+    if (importRawFile.value) {
+      const res = await importScriptsFile(importRawFile.value, importPassword.value)
+      const { imported, updated, skipped } = res.data
+      ElMessage.success(`导入完成：新增 ${imported} 条，更新 ${updated} 条，跳过 ${skipped || 0} 条`)
+      importDialogVisible.value = false
+      importRawFile.value = null
+      fetchScripts()
+      return
+    }
     const decrypted = await decryptBundle(importRawBundle.value, importPassword.value)
     if (!decrypted.scripts) throw new Error('invalid')
     importBundle.value = decrypted

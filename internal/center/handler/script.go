@@ -4,6 +4,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +22,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/pbkdf2"
 	"gorm.io/gorm"
 
 	"github.com/coolleng2525/hubterm/internal/center/model"
@@ -361,6 +367,21 @@ type presetBundle struct {
 	Overwrite  bool           `json:"overwrite,omitempty"`
 }
 
+type presetPackageInfo struct {
+	PackageVersion string `json:"package_version"`
+	BundleVersion  string `json:"bundle_version"`
+	CreatedAt      string `json:"created_at"`
+	Format         string `json:"format"`
+	Encrypted      bool   `json:"encrypted"`
+	Cipher         string `json:"cipher,omitempty"`
+	KDF            string `json:"kdf,omitempty"`
+	Iterations     int    `json:"iterations,omitempty"`
+	Salt           string `json:"salt,omitempty"`
+	IV             string `json:"iv,omitempty"`
+	PayloadFile    string `json:"payload_file,omitempty"`
+	PayloadFormat  string `json:"payload_format,omitempty"`
+}
+
 var unsafeBundleNameChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
 
 // Export handles GET /api/scripts/export.
@@ -376,7 +397,8 @@ func (h *ScriptHandler) Export(c *gin.Context) {
 
 	format := strings.ToLower(c.Query("format"))
 	if format == "tar" || format == "tar.gz" || format == "tgz" {
-		data, filename, err := buildScriptTarBundle(scripts, format != "tar")
+		password := c.GetHeader("X-HubTerm-Export-Password")
+		data, filename, err := buildScriptTarBundle(scripts, format != "tar", password)
 		if err != nil {
 			scriptLog.Error("export: failed to build tar bundle", log.Err(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build export package"})
@@ -519,7 +541,7 @@ func (h *ScriptHandler) readImportBundle(c *gin.Context) (presetBundle, error) {
 		if err != nil {
 			return presetBundle{}, fmt.Errorf("failed to read import file")
 		}
-		return parsePresetBundleFile(file.Filename, data)
+		return parsePresetBundleFile(file.Filename, data, c.PostForm("password"))
 	}
 
 	var bundle presetBundle
@@ -551,7 +573,31 @@ func buildInlinePresetBundle(scripts []model.Script) presetBundle {
 	return bundle
 }
 
-func buildScriptTarBundle(scripts []model.Script, gzipOutput bool) ([]byte, string, error) {
+func buildScriptTarBundle(scripts []model.Script, gzipOutput bool, password string) ([]byte, string, error) {
+	payload, err := buildPlainScriptTarBundle(scripts)
+	if err != nil {
+		return nil, "", err
+	}
+	ext := ".tar"
+	if gzipOutput {
+		ext = ".tar.gz"
+	}
+	nameSuffix := ""
+	if password != "" {
+		nameSuffix = "-enc"
+		payload, err = encryptPresetPayload(payload, password, "tar")
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	data, err := wrapTarPayload(payload, gzipOutput)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, "hubterm-presets-" + time.Now().UTC().Format("2006-01-02") + nameSuffix + ext, nil
+}
+
+func buildPlainScriptTarBundle(scripts []model.Script) ([]byte, error) {
 	bundle := presetBundle{
 		Version:    "1.0",
 		ExportedAt: time.Now().UTC().Format(time.RFC3339),
@@ -573,40 +619,147 @@ func buildScriptTarBundle(scripts []model.Script, gzipOutput bool) ([]byte, stri
 	}
 
 	var out bytes.Buffer
-	var writer io.Writer = &out
-	var gz *gzip.Writer
-	if gzipOutput {
-		gz = gzip.NewWriter(&out)
-		writer = gz
+	tw := tar.NewWriter(&out)
+	info := presetPackageInfo{
+		PackageVersion: "1.0",
+		BundleVersion:  bundle.Version,
+		CreatedAt:      bundle.ExportedAt,
+		Format:         "hubterm-presets",
+		Encrypted:      false,
 	}
-	tw := tar.NewWriter(writer)
+	infoJSON, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	if err := writeTarFile(tw, "hubterm-package.json", infoJSON); err != nil {
+		return nil, err
+	}
 	manifest, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if err := writeTarFile(tw, "manifest.json", manifest); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	for name, source := range files {
 		if err := writeTarFile(tw, name, []byte(source)); err != nil {
-			return nil, "", err
+			return nil, err
 		}
 	}
 	if err := tw.Close(); err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	if gz != nil {
-		if err := gz.Close(); err != nil {
-			return nil, "", err
-		}
-	}
-	ext := ".tar"
-	if gzipOutput {
-		ext = ".tar.gz"
-	}
-	return out.Bytes(), "hubterm-presets-" + time.Now().UTC().Format("2006-01-02") + ext, nil
+	return out.Bytes(), nil
 }
 
+func wrapTarPayload(payload []byte, gzipOutput bool) ([]byte, error) {
+	if !gzipOutput {
+		return payload, nil
+	}
+	var out bytes.Buffer
+	gz := gzip.NewWriter(&out)
+	if _, err := gz.Write(payload); err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+func encryptPresetPayload(payload []byte, password, payloadFormat string) ([]byte, error) {
+	salt := make([]byte, 16)
+	iv := make([]byte, 12)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+	if _, err := rand.Read(iv); err != nil {
+		return nil, err
+	}
+	key := pbkdf2.Key([]byte(password), salt, 120000, 32, sha256.New)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	ciphertext := gcm.Seal(nil, iv, payload, nil)
+	info := presetPackageInfo{
+		PackageVersion: "1.0",
+		BundleVersion:  "1.0",
+		CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+		Format:         "hubterm-presets",
+		Encrypted:      true,
+		Cipher:         "AES-256-GCM",
+		KDF:            "PBKDF2-SHA256",
+		Iterations:     120000,
+		Salt:           base64.StdEncoding.EncodeToString(salt),
+		IV:             base64.StdEncoding.EncodeToString(iv),
+		PayloadFile:    "payload.enc",
+		PayloadFormat:  payloadFormat,
+	}
+	infoJSON, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	tw := tar.NewWriter(&out)
+	if err := writeTarFile(tw, "hubterm-package.json", infoJSON); err != nil {
+		return nil, err
+	}
+	if err := writeTarFile(tw, "payload.enc", ciphertext); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+func decryptPresetPayload(info presetPackageInfo, files map[string][]byte, password string) ([]byte, error) {
+	if password == "" {
+		return nil, fmt.Errorf("encrypted package requires password")
+	}
+	if info.Cipher != "AES-256-GCM" || info.KDF != "PBKDF2-SHA256" {
+		return nil, fmt.Errorf("unsupported encrypted package")
+	}
+	salt, err := base64.StdEncoding.DecodeString(info.Salt)
+	if err != nil {
+		return nil, fmt.Errorf("invalid encrypted package salt")
+	}
+	iv, err := base64.StdEncoding.DecodeString(info.IV)
+	if err != nil {
+		return nil, fmt.Errorf("invalid encrypted package iv")
+	}
+	payloadFile := info.PayloadFile
+	if payloadFile == "" {
+		payloadFile = "payload.enc"
+	}
+	ciphertext, ok := files[payloadFile]
+	if !ok {
+		return nil, fmt.Errorf("encrypted package missing payload")
+	}
+	iterations := info.Iterations
+	if iterations <= 0 {
+		iterations = 120000
+	}
+	key := pbkdf2.Key([]byte(password), salt, iterations, 32, sha256.New)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	plain, err := gcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt encrypted package: %w", err)
+	}
+	return plain, nil
+}
 func writeTarFile(tw *tar.Writer, name string, data []byte) error {
 	header := &tar.Header{
 		Name:    name,
@@ -621,10 +774,10 @@ func writeTarFile(tw *tar.Writer, name string, data []byte) error {
 	return err
 }
 
-func parsePresetBundleFile(filename string, data []byte) (presetBundle, error) {
+func parsePresetBundleFile(filename string, data []byte, password string) (presetBundle, error) {
 	name := strings.ToLower(filename)
 	if strings.HasSuffix(name, ".tar") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz") {
-		return parsePresetTarBundle(data, strings.HasSuffix(name, ".gz") || strings.HasSuffix(name, ".tgz"))
+		return parsePresetTarBundle(data, strings.HasSuffix(name, ".gz") || strings.HasSuffix(name, ".tgz"), password)
 	}
 	var bundle presetBundle
 	if err := json.Unmarshal(data, &bundle); err != nil {
@@ -636,7 +789,7 @@ func parsePresetBundleFile(filename string, data []byte) (presetBundle, error) {
 	return bundle, nil
 }
 
-func parsePresetTarBundle(data []byte, gzipped bool) (presetBundle, error) {
+func parsePresetTarBundle(data []byte, gzipped bool, password string) (presetBundle, error) {
 	reader := io.Reader(bytes.NewReader(data))
 	var gz *gzip.Reader
 	var err error
@@ -670,6 +823,19 @@ func parsePresetTarBundle(data []byte, gzipped bool) (presetBundle, error) {
 			return presetBundle{}, fmt.Errorf("failed to read %s: %w", cleanName, err)
 		}
 		files[cleanName] = content
+	}
+	if infoData, ok := files["hubterm-package.json"]; ok {
+		var info presetPackageInfo
+		if err := json.Unmarshal(infoData, &info); err != nil {
+			return presetBundle{}, fmt.Errorf("invalid hubterm-package.json: %w", err)
+		}
+		if info.Encrypted {
+			payload, err := decryptPresetPayload(info, files, password)
+			if err != nil {
+				return presetBundle{}, err
+			}
+			return parsePresetTarBundle(payload, info.PayloadFormat == "tar.gz" || info.PayloadFormat == "tgz", "")
+		}
 	}
 	manifest, ok := files["manifest.json"]
 	if !ok {
@@ -802,7 +968,7 @@ func readPresetPath(path string, entry os.DirEntry) (presetBundle, error) {
 	if err != nil {
 		return presetBundle{}, err
 	}
-	return parsePresetBundleFile(entry.Name(), data)
+	return parsePresetBundleFile(entry.Name(), data, "")
 }
 
 func readPresetDirectory(dir string) (presetBundle, error) {
