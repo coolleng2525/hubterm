@@ -143,7 +143,7 @@
   </div>
 </template>
 <script setup>
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -165,13 +165,21 @@ const scriptSearchText = ref('')
 const customSendText = ref('')
 const scripts = ref([])
 const selectedScript = ref(null)
-const defaultScriptId = ref(localStorage.getItem('hubterm.defaultScriptId') || '')
+const defaultScriptId = ref('')
+
+function getDefaultScriptKey() {
+  return selectedProfileId.value 
+    ? `hubterm.defaultScriptId.${selectedProfileId.value}`
+    : `hubterm.defaultScriptId.${route.params.nodeId}`
+}
 
 async function fetchScripts() {
   try {
     const res = await getScripts()
     scripts.value = res.data
     // Auto-select default script on load
+    const key = getDefaultScriptKey()
+    defaultScriptId.value = localStorage.getItem(key) || ''
     if (defaultScriptId.value) {
       const found = scripts.value.find(s => (s.script_id || s.id) === defaultScriptId.value)
       if (found) {
@@ -186,16 +194,39 @@ async function fetchScripts() {
 }
 
 function setAsDefaultScript() {
+  const key = getDefaultScriptKey()
   if (selectedScriptId.value && selectedScriptId.value !== defaultScriptId.value) {
     defaultScriptId.value = selectedScriptId.value
-    localStorage.setItem('hubterm.defaultScriptId', selectedScriptId.value)
+    localStorage.setItem(key, selectedScriptId.value)
     ElMessage.success('已设为默认发送项')
   } else {
     defaultScriptId.value = ''
-    localStorage.removeItem('hubterm.defaultScriptId')
+    localStorage.removeItem(key)
     ElMessage.info('已取消默认发送项')
   }
 }
+
+watch(selectedProfileId, () => {
+  const key = getDefaultScriptKey()
+  defaultScriptId.value = localStorage.getItem(key) || ''
+  if (defaultScriptId.value) {
+    const found = scripts.value.find(s => (s.script_id || s.id) === defaultScriptId.value)
+    if (found) {
+      selectedScriptId.value = defaultScriptId.value
+      selectedScript.value = found
+      scriptSearchText.value = found.name
+    } else {
+      selectedScriptId.value = ''
+      selectedScript.value = null
+      scriptSearchText.value = ''
+    }
+  } else {
+    selectedScriptId.value = ''
+    selectedScript.value = null
+    scriptSearchText.value = ''
+  }
+})
+
 
 // Autocomplete fuzzy query
 function queryScripts(query, cb) {
