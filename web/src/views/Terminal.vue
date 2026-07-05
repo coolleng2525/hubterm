@@ -163,18 +163,26 @@ function handleScriptChange(val) {
   }
 }
 
-function sendTextToTerminal(text) {
-  const data = text.replace(/\r?\n/g, '\r') + '\r'
-  if (ws && ws.readyState === WebSocket.OPEN && connected.value) {
-    ws.send(JSON.stringify({ type: 2, content: data }))
+async function sendTextToTerminal(text) {
+  const lines = text.split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const data = line + '\r'
+    if (ws && ws.readyState === WebSocket.OPEN && connected.value) {
+      ws.send(JSON.stringify({ type: 2, content: data }))
+    }
+    if (i < lines.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
 }
 
-function handleQuickSend() {
+async function handleQuickSend() {
   if (!customSendText.value) return
-  sendTextToTerminal(customSendText.value)
+  const text = customSendText.value
   customSendText.value = ''
   selectedScriptSource.value = ''
+  await sendTextToTerminal(text)
   term?.focus()
 }
 const profiles = ref([])

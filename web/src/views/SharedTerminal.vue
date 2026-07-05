@@ -136,22 +136,30 @@ function handleScriptChange(val) {
   }
 }
 
-function sendTextToTerminal(text) {
-  const data = text.replace(/\r?\n/g, '\r') + '\r'
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    send('terminal_input', {
-      node_id: route.params.nodeId,
-      session_id: route.params.sessionId,
-      data: bytesToBase64(data),
-    })
+async function sendTextToTerminal(text) {
+  const lines = text.split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const data = line + '\r'
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      send('terminal_input', {
+        node_id: route.params.nodeId,
+        session_id: route.params.sessionId,
+        data: bytesToBase64(data),
+      })
+    }
+    if (i < lines.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
 }
 
-function handleQuickSend() {
+async function handleQuickSend() {
   if (!customSendText.value) return
-  sendTextToTerminal(customSendText.value)
+  const text = customSendText.value
   customSendText.value = ''
   selectedScriptSource.value = ''
+  await sendTextToTerminal(text)
   term?.focus()
 }
 
