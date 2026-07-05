@@ -206,14 +206,27 @@ function handleScriptClear() {
 
 
 async function sendTextToTerminal(text, language = 'shell') {
-  if (language === 'python') {
-    // Send python/scripts as a single block immediately
-    const data = text + '\r'
+  const trimmed = text.trim()
+  const hasShebang = trimmed.startsWith('#!')
+  const isPython = language === 'python' || trimmed.startsWith('#!/usr/bin/env python') || trimmed.startsWith('#!/usr/bin/python')
+
+  if (hasShebang || isPython) {
+    const ext = isPython ? 'py' : 'sh'
+    const tmpFile = `/tmp/hubterm_run_${Date.now()}.${ext}`
+    const cleanText = text.replace(/\r/g, '')
+    
+    let runCmd = ''
+    if (isPython) {
+      runCmd = `cat << 'EOF' > ${tmpFile}\n${cleanText}\nEOF\npython3 ${tmpFile}\nrm -f ${tmpFile}\n`
+    } else {
+      runCmd = `cat << 'EOF' > ${tmpFile}\n${cleanText}\nEOF\nchmod +x ${tmpFile}\n${tmpFile}\nrm -f ${tmpFile}\n`
+    }
+
     if (ws && ws.readyState === WebSocket.OPEN) {
       send('terminal_input', {
         node_id: route.params.nodeId,
         session_id: route.params.sessionId,
-        data: bytesToBase64(data),
+        data: bytesToBase64(runCmd),
       })
     }
     return

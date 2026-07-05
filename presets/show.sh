@@ -1,4 +1,5 @@
 #!/bin/bash
+#version 1.0
 show_usage(){
     echo "Usage: $0 [options]"
     echo "Options:"

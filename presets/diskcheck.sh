@@ -1,4 +1,3 @@
-#!/bin/bash
 echo "=== Disk Usage (Human Readable) ==="
 df -h
 echo ""

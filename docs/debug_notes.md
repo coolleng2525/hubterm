@@ -30,3 +30,30 @@ content.js:1 Uncaught (in promise) The message port closed before a response was
 保存的配置， 可以基于这个创建table的一条，创建的都需要入库。下次也可以用。
 这个页面需要显示配置名称。
 插件版和agent 版要一样。 现在插件版 没有改好。
+把现在的提交让 github release， 
+
+还有部署到 1.55 有点乱，你看是否能够整理一个脚本，不提交。本地用。也可以同步到 /code/hubterm_project 和 /opt 目录下。
+sudo systemctl start hubterm-center hubterm-agent && sleep 3 && sudo systemctl status hubterm-center hubterm-agent --no-pager -l
+这个是现在的用法。需要用这个。
+可以 restart 来做。
+
+你把现在的代码和我们现在的方向，看还有需要什么可以搞的。
+
+1. SSH 登录 1.55：
+    ssh lleng@192.168.1.55
+
+  2. 进入源码目录并拉取最新代码：
+    cd /code/hubterm_project/hubterm
+    git pull github main
+
+  3. 手动编译并部署到  /opt （或者直接运行我们写在服务里的更新指令）：
+  如果您想手动执行编译并重启，可直接运行：
+    # 编译 Go 程序
+    go build -o hubterm-center cmd/center/main.go
+    go build -o hubterm-agent cmd/agent/main.go
+
+    # 覆盖到启动目录 /opt/hubterm
+    sudo cp hubterm-center hubterm-agent /opt/hubterm/
+
+    # 重启服务
+    sudo systemctl restart hubterm-center hubterm-agent
