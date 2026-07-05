@@ -1,4 +1,5 @@
 const path = require('path')
+const webpack = require('webpack')
 
 module.exports = {
   target: 'electron-renderer',
@@ -18,6 +19,14 @@ module.exports = {
       { test: /\.pug$/, loader: 'pug-loader' },
     ],
   },
+  plugins: [
+    new webpack.IgnorePlugin({
+      resourceRegExp: /\.node$/,
+    }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^cpu-features$/,
+    }),
+  ],
   externals: {
     '@angular/animations': '@angular/animations',
     '@angular/common': '@angular/common',
