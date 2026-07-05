@@ -10,13 +10,14 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
           <h3 style="margin:0;font-weight: 500;">当前在线终端会话</h3>
           <div style="display:flex;gap:10px">
+            <el-input v-model="sessionSearch" placeholder="搜索备注/配置/IP/用户" clearable style="width:250px" />
             <el-input v-model="nodeFilter" placeholder="节点ID" clearable style="width:200px" @clear="fetchSessions" @keyup.enter="fetchSessions" />
             <el-input v-model="portFilter" placeholder="端口名" clearable style="width:150px" @clear="fetchSessions" @keyup.enter="fetchSessions" />
             <el-button type="primary" @click="fetchSessions">查询</el-button>
           </div>
         </div>
 
-        <el-table :data="sessions" stripe style="width:100%">
+        <el-table :data="filteredSessions" stripe style="width:100%">
           <el-table-column label="节点/IP" width="190" fixed>
             <template #default="{ row }">
               <div class="node-cell">
@@ -30,7 +31,7 @@
               <code style="font-size:12px">{{ shortId(row.session_id, 12) }}</code>
             </template>
           </el-table-column>
-          <el-table-column label="备注" min-width="150">
+          <el-table-column label="备注/配置" min-width="150">
             <template #default="{ row }">
               <span>{{ sessionLabel(row) }}</span>
             </template>
@@ -119,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Monitor, Connection } from '@element-plus/icons-vue'
@@ -132,6 +133,23 @@ const activeTab = ref('active')
 const sessions = ref([])
 const nodeFilter = ref('')
 const portFilter = ref('')
+const sessionSearch = ref('')
+
+const filteredSessions = computed(() => {
+  const q = (sessionSearch.value || '').trim().toLowerCase()
+  if (!q) return sessions.value
+  return sessions.value.filter(s => {
+    return (
+      (s.node_ip || '').toLowerCase().includes(q) ||
+      (s.node_name || '').toLowerCase().includes(q) ||
+      (s.session_id || '').toLowerCase().includes(q) ||
+      (s.display_name || '').toLowerCase().includes(q) ||
+      (s.port_name || '').toLowerCase().includes(q) ||
+      (s.user || '').toLowerCase().includes(q) ||
+      (s.client_ip || '').toLowerCase().includes(q)
+    )
+  })
+})
 
 // SSH Profiles state
 const allProfiles = ref([])
@@ -259,7 +277,7 @@ function openSharedTerminalInNewTab(session) {
 
 async function handleRename(session) {
   try {
-    const { value } = await ElMessageBox.prompt('给这个会话设置一个容易识别 the 备注', '重命名会话', {
+    const { value } = await ElMessageBox.prompt('给这个会话设置一个容易识别的备注', '重命名会话', {
       confirmButtonText: '保存',
       cancelButtonText: '取消',
       inputValue: session.display_name || '',
