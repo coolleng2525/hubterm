@@ -41,6 +41,7 @@ vendor/
 *.db
 hubterm-center.bak*
 hubterm-center.log
+hubterm-agent.local.log
 config.yaml
 data/
 .cursor
