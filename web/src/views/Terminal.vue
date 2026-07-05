@@ -111,6 +111,17 @@
           :value="script.script_id || script.id"
         />
       </el-select>
+      <el-button
+        size="small"
+        type="warning"
+        link
+        title="设为默认发送项 (再次点击取消默认)"
+        style="padding: 0 4px;"
+        @click="setAsDefaultScript"
+      >
+        <el-icon v-if="selectedScriptId && selectedScriptId === defaultScriptId"><StarFilled /></el-icon>
+        <el-icon v-else><Star /></el-icon>
+      </el-button>
       <el-input
         v-model="customSendText"
         type="textarea"
@@ -134,6 +145,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { ElMessage } from 'element-plus'
+import { Star, StarFilled } from '@element-plus/icons-vue'
 import { getNode, getSSHProfiles, createSSHProfile, updateSSHProfile, deleteSSHProfile, getScripts } from '../api'
 
 const route = useRoute()
@@ -148,13 +160,34 @@ const selectedScriptId = ref('')
 const customSendText = ref('')
 const scripts = ref([])
 const selectedScript = ref(null)
+const defaultScriptId = ref(localStorage.getItem('hubterm.defaultScriptId') || '')
 
 async function fetchScripts() {
   try {
     const res = await getScripts()
     scripts.value = res.data
+    // Auto-select default script on load
+    if (defaultScriptId.value) {
+      const found = scripts.value.find(s => (s.script_id || s.id) === defaultScriptId.value)
+      if (found) {
+        selectedScriptId.value = defaultScriptId.value
+        selectedScript.value = found
+      }
+    }
   } catch (error) {
     console.error('Failed to fetch scripts:', error)
+  }
+}
+
+function setAsDefaultScript() {
+  if (selectedScriptId.value && selectedScriptId.value !== defaultScriptId.value) {
+    defaultScriptId.value = selectedScriptId.value
+    localStorage.setItem('hubterm.defaultScriptId', selectedScriptId.value)
+    ElMessage.success('已设为默认发送项')
+  } else {
+    defaultScriptId.value = ''
+    localStorage.removeItem('hubterm.defaultScriptId')
+    ElMessage.info('已取消默认发送项')
   }
 }
 
