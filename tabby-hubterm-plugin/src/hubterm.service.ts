@@ -359,7 +359,7 @@ export class HubTermService {
                 user: bg.user,
                 type: 'master',
                 client_ip: '127.0.0.1',
-                connected_at: Date.now(),
+                connected_at: Math.floor(Date.now() / 1000),
             })
         }
         return sessions
