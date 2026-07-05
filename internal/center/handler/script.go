@@ -946,7 +946,7 @@ func (h *ScriptHandler) LoadPresetsFromDir(dir string) {
 			scriptLog.Warn("failed to read preset bundle", log.String("path", path), log.Err(err))
 			continue
 		}
-		result := h.importPresetBundle(bundle, false)
+		result := h.importPresetBundle(bundle, true)
 		total += result.Imported
 		skipped += result.Skipped + result.Updated
 	}
