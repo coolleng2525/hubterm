@@ -9,10 +9,10 @@
       <el-table :data="scripts" stripe style="width:100%">
         <el-table-column prop="name" label="名称" width="200" font-weight="bold" />
         <el-table-column prop="description" label="说明/备注" min-width="200" />
-        <el-table-column prop="language" label="语言/类型" width="120">
+        <el-table-column prop="language" label="类型" width="150">
           <template #default="{ row }">
-            <el-tag :type="row.language === 'python' ? 'success' : 'info'" size="small">
-              {{ row.language || 'shell' }}
+            <el-tag :type="row.language === 'python' ? 'success' : row.language === 'shell' ? 'warning' : 'primary'" size="small">
+              {{ row.language === 'python' ? 'Python 脚本' : row.language === 'shell' ? 'Shell 脚本' : '文本' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -47,8 +47,9 @@
         </el-form-item>
         <el-form-item label="类型" prop="language">
           <el-radio-group v-model="form.language">
-            <el-radio-button label="shell">Shell 命令</el-radio-button>
-            <el-radio-button label="python">Python 脚本</el-radio-button>
+            <el-radio-button label="text">文本 (按行发送)</el-radio-button>
+            <el-radio-button label="shell">Shell 脚本 (整块发送)</el-radio-button>
+            <el-radio-button label="python">Python 脚本 (整块发送)</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="命令/脚本内容 (支持多行)" prop="source">
@@ -83,7 +84,7 @@ const formRef = ref(null)
 const form = reactive({
   name: '',
   description: '',
-  language: 'shell',
+  language: 'text',
   source: '',
 })
 
@@ -107,13 +108,13 @@ function openDialog(row = null) {
     editingId.value = row.script_id || row.id
     form.name = row.name
     form.description = row.description || ''
-    form.language = row.language || 'shell'
+    form.language = row.language || 'text'
     form.source = row.source
   } else {
     editingId.value = null
     form.name = ''
     form.description = ''
-    form.language = 'shell'
+    form.language = 'text'
     form.source = ''
   }
   dialogVisible.value = true
