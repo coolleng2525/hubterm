@@ -147,6 +147,7 @@ const settingsVisible = ref(true)
 const selectedScriptSource = ref('')
 const customSendText = ref('')
 const scripts = ref([])
+const selectedScript = ref(null)
 
 async function fetchScripts() {
   try {
@@ -159,11 +160,25 @@ async function fetchScripts() {
 
 function handleScriptChange(val) {
   if (val) {
+    const found = scripts.value.find(s => s.source === val)
+    selectedScript.value = found || null
     customSendText.value = val
+  } else {
+    selectedScript.value = null
   }
 }
 
-async function sendTextToTerminal(text) {
+async function sendTextToTerminal(text, language = 'shell') {
+  if (language === 'python') {
+    // Send python/scripts as a single block immediately
+    const data = text + '\r'
+    if (ws && ws.readyState === WebSocket.OPEN && connected.value) {
+      ws.send(JSON.stringify({ type: 2, content: data }))
+    }
+    return
+  }
+
+  // Otherwise (e.g. text/shell), send line-by-line with 100ms delay
   const lines = text.split(/\r?\n/)
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -180,9 +195,11 @@ async function sendTextToTerminal(text) {
 async function handleQuickSend() {
   if (!customSendText.value) return
   const text = customSendText.value
+  const lang = selectedScript.value ? selectedScript.value.language : 'shell'
   customSendText.value = ''
   selectedScriptSource.value = ''
-  await sendTextToTerminal(text)
+  selectedScript.value = null
+  await sendTextToTerminal(text, lang)
   term?.focus()
 }
 const profiles = ref([])
