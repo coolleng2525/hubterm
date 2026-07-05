@@ -35,6 +35,14 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build
           npm pack
+          VERSION=$(jq -r .version package.json)
+          mkdir -p ../tabby-hubterm-windows/tabby-hubterm
+          cp windows-packaging/install.cmd ../tabby-hubterm-windows/
+          cp windows-packaging/README-安装说明.txt ../tabby-hubterm-windows/
+          cp package.json ../tabby-hubterm-windows/tabby-hubterm/
+          cp -r dist ../tabby-hubterm-windows/tabby-hubterm/
+          cd ../tabby-hubterm-windows
+          zip -r "../tabby-hubterm-${VERSION}-windows.zip" *
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -47,7 +55,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Tabby plugin package
-        run: gh release upload "${GITHUB_REF_NAME}" tabby-hubterm-plugin/tabby-hubterm-*.tgz --clobber
+        run: |
+          VERSION=$(jq -r .version tabby-hubterm-plugin/package.json)
+          gh release upload "${GITHUB_REF_NAME}" tabby-hubterm-plugin/tabby-hubterm-${VERSION}.tgz --clobber
+          gh release upload "${GITHUB_REF_NAME}" tabby-hubterm-${VERSION}-windows.zip --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
