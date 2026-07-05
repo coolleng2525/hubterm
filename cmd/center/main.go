@@ -160,6 +160,7 @@ func main() {
 		api.POST("/scripts/:id/execute-on-node/:node_id", middleware.OperatorRequired(), scriptH.ExecuteOnNode)
 		api.GET("/scripts", scriptH.List)
 		api.GET("/scripts/:id", scriptH.Get)
+		api.PUT("/scripts/:id", middleware.OperatorRequired(), scriptH.Update)
 		api.DELETE("/scripts/:id", middleware.OperatorRequired(), scriptH.Delete)
 		api.GET("/scripts/:id/results", scriptH.Results)
 

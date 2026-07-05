@@ -109,3 +109,15 @@ export function deleteNode(id) {
 export function getScripts() {
   return api.get('/scripts')
 }
+
+export function createScript(data) {
+  return api.post('/scripts', data)
+}
+
+export function updateScript(id, data) {
+  return api.put(`/scripts/${id}`, data)
+}
+
+export function deleteScript(id) {
+  return api.delete(`/scripts/${id}`)
+}

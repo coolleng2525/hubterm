@@ -261,6 +261,65 @@ func (h *ScriptHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// Update handles PUT /api/scripts/:id — update an existing script.
+func (h *ScriptHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	var scriptModel model.Script
+	if err := h.DB.Where("script_id = ? OR id = ?", id, id).First(&scriptModel).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "script not found"})
+		return
+	}
+
+	var req struct {
+		Name        string         `json:"name" binding:"required"`
+		Description string         `json:"description"`
+		Language    string         `json:"language"`
+		Source      string         `json:"source" binding:"required"`
+		Params      []script.Param `json:"params"`
+		Timeout     int            `json:"timeout"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Language == "" {
+		req.Language = "python"
+	}
+	if req.Language == "python" {
+		if err := h.Engine.Validate(req.Source); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "syntax error: " + err.Error()})
+			return
+		}
+	}
+
+	paramsJSON := "[]"
+	if len(req.Params) > 0 {
+		b, err := json.Marshal(req.Params)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid params"})
+			return
+		}
+		paramsJSON = string(b)
+	}
+
+	scriptModel.Name = req.Name
+	scriptModel.Description = req.Description
+	scriptModel.Language = req.Language
+	scriptModel.Source = req.Source
+	scriptModel.Params = paramsJSON
+	scriptModel.Timeout = req.Timeout
+
+	if err := h.DB.Save(&scriptModel).Error; err != nil {
+		scriptLog.Error("failed to update script", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	scriptLog.Info("script updated", log.String("script_id", scriptModel.ScriptID))
+	c.JSON(http.StatusOK, scriptModel)
+}
+
 // Results handles GET /api/scripts/:id/results — list execution history for a script.
 func (h *ScriptHandler) Results(c *gin.Context) {
 	id := c.Param("id")

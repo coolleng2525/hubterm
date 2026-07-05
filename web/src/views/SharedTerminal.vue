@@ -50,10 +50,12 @@
         </el-select>
         <el-input
           v-model="customSendText"
+          type="textarea"
+          :autosize="{ minRows: 1, maxRows: 4 }"
           size="small"
-          placeholder="输入要发送的命令内容"
-          style="width:200px"
-          @keyup.enter="handleQuickSend"
+          placeholder="输入/粘贴命令内容 (回车发送，Shift+回车换行)"
+          style="width:250px"
+          @keydown.enter.exact.prevent="handleQuickSend"
         />
         <el-button type="primary" size="small" :disabled="!customSendText" @click="handleQuickSend">发送</el-button>
       </div>
@@ -135,7 +137,7 @@ function handleScriptChange(val) {
 }
 
 function sendTextToTerminal(text) {
-  const data = text + '\r'
+  const data = text.replace(/\r?\n/g, '\r') + '\r'
   if (ws && ws.readyState === WebSocket.OPEN) {
     send('terminal_input', {
       node_id: route.params.nodeId,
