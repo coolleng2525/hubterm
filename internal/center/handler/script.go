@@ -921,6 +921,7 @@ func inferLanguage(filename string) string {
 // database. It supports:
 //   - *.json inline bundles
 //   - *.tar / *.tar.gz packages with manifest.json
+//   - standalone *.sh / *.py / *.txt files
 //   - subdirectories that contain manifest.json plus referenced files
 //
 // Called once on startup when cfg.Presets.Dir is configured.
@@ -961,7 +962,13 @@ func readPresetPath(path string, entry os.DirEntry) (presetBundle, error) {
 		return readPresetDirectory(path)
 	}
 	name := strings.ToLower(entry.Name())
-	if !(strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".tar") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz")) {
+	if isPresetScriptFile(name) {
+		return readPresetScriptFile(path)
+	}
+	if strings.HasSuffix(name, ".json") {
+		return readPresetJSONFile(path)
+	}
+	if !(strings.HasSuffix(name, ".tar") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz")) {
 		return presetBundle{}, fmt.Errorf("unsupported preset file")
 	}
 	data, err := os.ReadFile(path)
@@ -969,6 +976,79 @@ func readPresetPath(path string, entry os.DirEntry) (presetBundle, error) {
 		return presetBundle{}, err
 	}
 	return parsePresetBundleFile(entry.Name(), data, "")
+}
+
+func readPresetJSONFile(filename string) (presetBundle, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return presetBundle{}, err
+	}
+	var bundle presetBundle
+	if err := json.Unmarshal(data, &bundle); err != nil {
+		return presetBundle{}, fmt.Errorf("invalid JSON bundle: %w", err)
+	}
+	files, err := readSiblingSourceFiles(filepath.Dir(filename), bundle)
+	if err != nil {
+		return presetBundle{}, err
+	}
+	if err := hydrateBundleSources(&bundle, files); err != nil {
+		return presetBundle{}, err
+	}
+	return bundle, nil
+}
+
+func readSiblingSourceFiles(dir string, bundle presetBundle) (map[string][]byte, error) {
+	files := map[string][]byte{}
+	for _, ps := range bundle.Scripts {
+		if ps.SourceFile == "" {
+			continue
+		}
+		cleanName, err := cleanBundlePath(ps.SourceFile)
+		if err != nil {
+			return nil, err
+		}
+		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(cleanName)))
+		if err != nil {
+			return nil, fmt.Errorf("read source file %s: %w", cleanName, err)
+		}
+		files[cleanName] = data
+	}
+	if len(files) == 0 {
+		return nil, nil
+	}
+	return files, nil
+}
+
+func isPresetScriptFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".sh", ".bash", ".py", ".txt":
+		return true
+	default:
+		return false
+	}
+}
+
+func readPresetScriptFile(filename string) (presetBundle, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return presetBundle{}, err
+	}
+	base := filepath.Base(filename)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	if name == "" {
+		name = base
+	}
+	return presetBundle{
+		Version:    "1.0",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Scripts: []presetScript{{
+			Name:        name,
+			Description: "Loaded from presets/" + base,
+			Language:    inferLanguage(base),
+			Source:      string(data),
+			Timeout:     30,
+		}},
+	}, nil
 }
 
 func readPresetDirectory(dir string) (presetBundle, error) {

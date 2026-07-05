@@ -6,6 +6,8 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -71,6 +73,68 @@ func TestEncryptedScriptTarBundleRoundTrip(t *testing.T) {
 	}
 	if bundle.Scripts[0].Source != "echo hello" {
 		t.Fatalf("unexpected source: %q", bundle.Scripts[0].Source)
+	}
+}
+
+func TestReadPresetScriptFile(t *testing.T) {
+	dir := t.TempDir()
+	filename := filepath.Join(dir, "check.sh")
+	if err := os.WriteFile(filename, []byte("echo check\n"), 0600); err != nil {
+		t.Fatalf("write preset script: %v", err)
+	}
+
+	entry, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read temp dir: %v", err)
+	}
+	bundle, err := readPresetPath(filename, entry[0])
+	if err != nil {
+		t.Fatalf("readPresetPath: %v", err)
+	}
+	if len(bundle.Scripts) != 1 {
+		t.Fatalf("expected 1 script, got %d", len(bundle.Scripts))
+	}
+	script := bundle.Scripts[0]
+	if script.Name != "check" {
+		t.Fatalf("expected name check, got %q", script.Name)
+	}
+	if script.Language != "shell" {
+		t.Fatalf("expected shell language, got %q", script.Language)
+	}
+	if script.Source != "echo check\n" {
+		t.Fatalf("unexpected source: %q", script.Source)
+	}
+}
+
+func TestReadPresetJSONFileWithSiblingSourceFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "show.sh"), []byte("echo show\n"), 0600); err != nil {
+		t.Fatalf("write source file: %v", err)
+	}
+	manifest := `{
+  "version": "1.0",
+  "scripts": [
+    {
+      "name": "show test",
+      "language": "shell",
+      "source_file": "show.sh"
+    }
+  ]
+}`
+	manifestPath := filepath.Join(dir, "default.json")
+	if err := os.WriteFile(manifestPath, []byte(manifest), 0600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	bundle, err := readPresetJSONFile(manifestPath)
+	if err != nil {
+		t.Fatalf("readPresetJSONFile: %v", err)
+	}
+	if len(bundle.Scripts) != 1 {
+		t.Fatalf("expected 1 script, got %d", len(bundle.Scripts))
+	}
+	if bundle.Scripts[0].Source != "echo show\n" {
+		t.Fatalf("unexpected hydrated source: %q", bundle.Scripts[0].Source)
 	}
 }
 
