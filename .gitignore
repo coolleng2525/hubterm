@@ -37,6 +37,7 @@ Thumbs.db
 
 # Go
 vendor/
+.gocache/
 *.db
 hubterm-center.bak*
 hubterm-center.log

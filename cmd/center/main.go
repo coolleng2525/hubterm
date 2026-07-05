@@ -93,6 +93,8 @@ func main() {
 	nodeH := &handler.NodeHandler{DB: model.GetDB(), AgentWS: agentWSH}
 	sessionH := &handler.SessionHandler{DB: model.GetDB(), AgentWS: agentWSH}
 	scriptH := handler.NewScriptHandler(model.GetDB(), script.NewEngine())
+	// Auto-load preset JSON bundles from the configured presets directory
+	scriptH.LoadPresetsFromDir(cfg.Presets.Dir)
 	deviceSvc := service.NewDeviceService(model.GetDB())
 	aiH := handler.NewAIHandler(model.GetDB(), deviceSvc, agentWSH)
 

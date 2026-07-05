@@ -1,8 +1,18 @@
 package handler
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -334,10 +344,13 @@ func (h *ScriptHandler) Results(c *gin.Context) {
 
 // presetScript is the per-script entry in an import/export bundle.
 type presetScript struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Language    string `json:"language"`
-	Source      string `json:"source"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Language    string         `json:"language"`
+	Source      string         `json:"source,omitempty"`
+	SourceFile  string         `json:"source_file,omitempty"`
+	Params      []script.Param `json:"params,omitempty"`
+	Timeout     int            `json:"timeout,omitempty"`
 }
 
 // presetBundle is the top-level import/export JSON document.
@@ -345,9 +358,14 @@ type presetBundle struct {
 	Version    string         `json:"version"`
 	ExportedAt string         `json:"exported_at"`
 	Scripts    []presetScript `json:"scripts"`
+	Overwrite  bool           `json:"overwrite,omitempty"`
 }
 
-// Export handles GET /api/scripts/export — return all scripts as a JSON preset bundle.
+var unsafeBundleNameChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
+
+// Export handles GET /api/scripts/export.
+// By default it returns a JSON preset bundle. With ?format=tar or ?format=tar.gz
+// it returns a tar package containing manifest.json and script files.
 func (h *ScriptHandler) Export(c *gin.Context) {
 	var scripts []model.Script
 	if err := h.DB.Order("name asc").Find(&scripts).Error; err != nil {
@@ -356,56 +374,84 @@ func (h *ScriptHandler) Export(c *gin.Context) {
 		return
 	}
 
-	bundle := presetBundle{
-		Version:    "1.0",
-		ExportedAt: time.Now().UTC().Format(time.RFC3339),
-		Scripts:    make([]presetScript, 0, len(scripts)),
-	}
-	for _, s := range scripts {
-		bundle.Scripts = append(bundle.Scripts, presetScript{
-			Name:        s.Name,
-			Description: s.Description,
-			Language:    s.Language,
-			Source:      s.Source,
-		})
+	format := strings.ToLower(c.Query("format"))
+	if format == "tar" || format == "tar.gz" || format == "tgz" {
+		data, filename, err := buildScriptTarBundle(scripts, format != "tar")
+		if err != nil {
+			scriptLog.Error("export: failed to build tar bundle", log.Err(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build export package"})
+			return
+		}
+		contentType := "application/x-tar"
+		if strings.HasSuffix(filename, ".gz") {
+			contentType = "application/gzip"
+		}
+		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+		c.Data(http.StatusOK, contentType, data)
+		return
 	}
 
+	bundle := buildInlinePresetBundle(scripts)
 	scriptLog.Info("scripts exported", log.Int("count", len(bundle.Scripts)))
 	c.JSON(http.StatusOK, bundle)
 }
 
-// Import handles POST /api/scripts/import — bulk-upsert scripts from a JSON preset bundle.
+// Import handles POST /api/scripts/import — bulk-upsert scripts from a JSON
+// preset bundle, uploaded JSON file, tar package, or tar.gz package.
 // Scripts are matched by name: existing ones are updated, new ones are created.
 func (h *ScriptHandler) Import(c *gin.Context) {
-	var bundle presetBundle
-	if err := c.ShouldBindJSON(&bundle); err != nil {
+	bundle, err := h.readImportBundle(c)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	result := h.importPresetBundle(bundle, bundle.Overwrite)
+	c.JSON(http.StatusOK, result)
+}
+
+type scriptImportResult struct {
+	Imported int `json:"imported"`
+	Updated  int `json:"updated"`
+	Skipped  int `json:"skipped"`
+}
+
+func (h *ScriptHandler) importPresetBundle(bundle presetBundle, overwriteExisting bool) scriptImportResult {
 	imported := 0
 	updated := 0
+	skipped := 0
 
 	for _, ps := range bundle.Scripts {
 		if ps.Name == "" {
+			skipped++
 			continue
 		}
 		lang := ps.Language
 		if lang == "" {
-			lang = "python"
+			lang = "text"
+		}
+		paramsJSON := "[]"
+		if len(ps.Params) > 0 {
+			if data, err := json.Marshal(ps.Params); err == nil {
+				paramsJSON = string(data)
+			}
+		}
+		timeout := ps.Timeout
+		if timeout == 0 {
+			timeout = 30
 		}
 
 		var existing model.Script
 		err := h.DB.Where("name = ?", ps.Name).First(&existing).Error
 		if err != nil {
-			// Not found — create new.
 			newScript := model.Script{
 				ScriptID:    uuid.New().String(),
 				Name:        ps.Name,
 				Description: ps.Description,
 				Language:    lang,
 				Source:      ps.Source,
-				Params:      "[]",
+				Params:      paramsJSON,
+				Timeout:     timeout,
 			}
 			if dbErr := h.DB.Create(&newScript).Error; dbErr != nil {
 				scriptLog.Error("import: failed to create script",
@@ -416,10 +462,15 @@ func (h *ScriptHandler) Import(c *gin.Context) {
 			}
 			imported++
 		} else {
-			// Found — update fields.
+			if !overwriteExisting {
+				skipped++
+				continue
+			}
 			existing.Description = ps.Description
 			existing.Language = lang
 			existing.Source = ps.Source
+			existing.Params = paramsJSON
+			existing.Timeout = timeout
 			if dbErr := h.DB.Save(&existing).Error; dbErr != nil {
 				scriptLog.Error("import: failed to update script",
 					log.String("name", ps.Name),
@@ -434,8 +485,9 @@ func (h *ScriptHandler) Import(c *gin.Context) {
 	scriptLog.Info("scripts imported",
 		log.Int("imported", imported),
 		log.Int("updated", updated),
+		log.Int("skipped", skipped),
 	)
-	c.JSON(http.StatusOK, gin.H{"imported": imported, "updated": updated})
+	return scriptImportResult{Imported: imported, Updated: updated, Skipped: skipped}
 }
 
 // parseScriptParams parses the JSON params string from the database into []script.Param.
@@ -449,4 +501,338 @@ func parseScriptParams(paramsJSON string) []script.Param {
 		return nil
 	}
 	return params
+}
+
+func (h *ScriptHandler) readImportBundle(c *gin.Context) (presetBundle, error) {
+	contentType := c.GetHeader("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		file, err := c.FormFile("file")
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("missing import file")
+		}
+		src, err := file.Open()
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("failed to open import file")
+		}
+		defer src.Close()
+		data, err := io.ReadAll(io.LimitReader(src, 50*1024*1024))
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("failed to read import file")
+		}
+		return parsePresetBundleFile(file.Filename, data)
+	}
+
+	var bundle presetBundle
+	if err := c.ShouldBindJSON(&bundle); err != nil {
+		return presetBundle{}, err
+	}
+	if err := hydrateBundleSources(&bundle, nil); err != nil {
+		return presetBundle{}, err
+	}
+	return bundle, nil
+}
+
+func buildInlinePresetBundle(scripts []model.Script) presetBundle {
+	bundle := presetBundle{
+		Version:    "1.0",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Scripts:    make([]presetScript, 0, len(scripts)),
+	}
+	for _, s := range scripts {
+		bundle.Scripts = append(bundle.Scripts, presetScript{
+			Name:        s.Name,
+			Description: s.Description,
+			Language:    s.Language,
+			Source:      s.Source,
+			Params:      parseScriptParams(s.Params),
+			Timeout:     s.Timeout,
+		})
+	}
+	return bundle
+}
+
+func buildScriptTarBundle(scripts []model.Script, gzipOutput bool) ([]byte, string, error) {
+	bundle := presetBundle{
+		Version:    "1.0",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Scripts:    make([]presetScript, 0, len(scripts)),
+	}
+	files := map[string]string{}
+	used := map[string]int{}
+	for _, s := range scripts {
+		filename := scriptBundleFilename(s.Name, s.Language, used)
+		files[filename] = s.Source
+		bundle.Scripts = append(bundle.Scripts, presetScript{
+			Name:        s.Name,
+			Description: s.Description,
+			Language:    s.Language,
+			SourceFile:  filename,
+			Params:      parseScriptParams(s.Params),
+			Timeout:     s.Timeout,
+		})
+	}
+
+	var out bytes.Buffer
+	var writer io.Writer = &out
+	var gz *gzip.Writer
+	if gzipOutput {
+		gz = gzip.NewWriter(&out)
+		writer = gz
+	}
+	tw := tar.NewWriter(writer)
+	manifest, err := json.MarshalIndent(bundle, "", "  ")
+	if err != nil {
+		return nil, "", err
+	}
+	if err := writeTarFile(tw, "manifest.json", manifest); err != nil {
+		return nil, "", err
+	}
+	for name, source := range files {
+		if err := writeTarFile(tw, name, []byte(source)); err != nil {
+			return nil, "", err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return nil, "", err
+	}
+	if gz != nil {
+		if err := gz.Close(); err != nil {
+			return nil, "", err
+		}
+	}
+	ext := ".tar"
+	if gzipOutput {
+		ext = ".tar.gz"
+	}
+	return out.Bytes(), "hubterm-presets-" + time.Now().UTC().Format("2006-01-02") + ext, nil
+}
+
+func writeTarFile(tw *tar.Writer, name string, data []byte) error {
+	header := &tar.Header{
+		Name:    name,
+		Mode:    0600,
+		Size:    int64(len(data)),
+		ModTime: time.Now(),
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+	_, err := tw.Write(data)
+	return err
+}
+
+func parsePresetBundleFile(filename string, data []byte) (presetBundle, error) {
+	name := strings.ToLower(filename)
+	if strings.HasSuffix(name, ".tar") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz") {
+		return parsePresetTarBundle(data, strings.HasSuffix(name, ".gz") || strings.HasSuffix(name, ".tgz"))
+	}
+	var bundle presetBundle
+	if err := json.Unmarshal(data, &bundle); err != nil {
+		return presetBundle{}, fmt.Errorf("invalid JSON bundle: %w", err)
+	}
+	if err := hydrateBundleSources(&bundle, nil); err != nil {
+		return presetBundle{}, err
+	}
+	return bundle, nil
+}
+
+func parsePresetTarBundle(data []byte, gzipped bool) (presetBundle, error) {
+	reader := io.Reader(bytes.NewReader(data))
+	var gz *gzip.Reader
+	var err error
+	if gzipped {
+		gz, err = gzip.NewReader(reader)
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("invalid gzip package: %w", err)
+		}
+		defer gz.Close()
+		reader = gz
+	}
+	tr := tar.NewReader(reader)
+	files := map[string][]byte{}
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("invalid tar package: %w", err)
+		}
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		cleanName, err := cleanBundlePath(header.Name)
+		if err != nil {
+			return presetBundle{}, err
+		}
+		content, err := io.ReadAll(io.LimitReader(tr, 10*1024*1024))
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("failed to read %s: %w", cleanName, err)
+		}
+		files[cleanName] = content
+	}
+	manifest, ok := files["manifest.json"]
+	if !ok {
+		return presetBundle{}, fmt.Errorf("package missing manifest.json")
+	}
+	var bundle presetBundle
+	if err := json.Unmarshal(manifest, &bundle); err != nil {
+		return presetBundle{}, fmt.Errorf("invalid manifest.json: %w", err)
+	}
+	if err := hydrateBundleSources(&bundle, files); err != nil {
+		return presetBundle{}, err
+	}
+	return bundle, nil
+}
+
+func hydrateBundleSources(bundle *presetBundle, files map[string][]byte) error {
+	for i := range bundle.Scripts {
+		ps := &bundle.Scripts[i]
+		if ps.Language == "" {
+			ps.Language = inferLanguage(ps.SourceFile)
+		}
+		if ps.Source == "" && ps.SourceFile != "" {
+			cleanName, err := cleanBundlePath(ps.SourceFile)
+			if err != nil {
+				return err
+			}
+			if files == nil {
+				return fmt.Errorf("source_file requires a package file: %s", cleanName)
+			}
+			content, ok := files[cleanName]
+			if !ok {
+				return fmt.Errorf("source file not found in package: %s", cleanName)
+			}
+			ps.Source = string(content)
+		}
+		if ps.Language == "" {
+			ps.Language = "text"
+		}
+	}
+	return nil
+}
+
+func cleanBundlePath(name string) (string, error) {
+	cleaned := path.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if cleaned == "." || strings.HasPrefix(cleaned, "../") || strings.HasPrefix(cleaned, "/") {
+		return "", fmt.Errorf("invalid package path: %s", name)
+	}
+	return cleaned, nil
+}
+
+func scriptBundleFilename(name, language string, used map[string]int) string {
+	base := strings.Trim(unsafeBundleNameChars.ReplaceAllString(name, "-"), ".-")
+	if base == "" {
+		base = "script"
+	}
+	ext := ".txt"
+	switch language {
+	case "python":
+		ext = ".py"
+	case "shell":
+		ext = ".sh"
+	}
+	filename := "files/" + base + ext
+	used[filename]++
+	if used[filename] > 1 {
+		filename = fmt.Sprintf("files/%s-%d%s", base, used[filename], ext)
+	}
+	return filename
+}
+
+func inferLanguage(filename string) string {
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".py":
+		return "python"
+	case ".sh", ".bash":
+		return "shell"
+	default:
+		return "text"
+	}
+}
+
+// LoadPresetsFromDir reads preset bundles from dir and upserts scripts into the
+// database. It supports:
+//   - *.json inline bundles
+//   - *.tar / *.tar.gz packages with manifest.json
+//   - subdirectories that contain manifest.json plus referenced files
+//
+// Called once on startup when cfg.Presets.Dir is configured.
+func (h *ScriptHandler) LoadPresetsFromDir(dir string) {
+	if dir == "" {
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		scriptLog.Warn("presets dir not readable", log.String("dir", dir), log.Err(err))
+		return
+	}
+
+	total, skipped := 0, 0
+	for _, entry := range entries {
+		path := filepath.Join(dir, entry.Name())
+		bundle, err := readPresetPath(path, entry)
+		if err != nil {
+			scriptLog.Warn("failed to read preset bundle", log.String("path", path), log.Err(err))
+			continue
+		}
+		result := h.importPresetBundle(bundle, false)
+		total += result.Imported
+		skipped += result.Skipped + result.Updated
+	}
+	scriptLog.Info("presets loaded from dir",
+		log.String("dir", dir),
+		log.Int("created", total),
+		log.Int("skipped_existing", skipped),
+	)
+}
+
+func readPresetPath(path string, entry os.DirEntry) (presetBundle, error) {
+	if entry.IsDir() {
+		return readPresetDirectory(path)
+	}
+	name := strings.ToLower(entry.Name())
+	if !(strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".tar") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz")) {
+		return presetBundle{}, fmt.Errorf("unsupported preset file")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return presetBundle{}, err
+	}
+	return parsePresetBundleFile(entry.Name(), data)
+}
+
+func readPresetDirectory(dir string) (presetBundle, error) {
+	manifestPath := filepath.Join(dir, "manifest.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return presetBundle{}, err
+	}
+	var bundle presetBundle
+	if err := json.Unmarshal(manifest, &bundle); err != nil {
+		return presetBundle{}, fmt.Errorf("invalid manifest.json: %w", err)
+	}
+	files := map[string][]byte{}
+	for i := range bundle.Scripts {
+		sourceFile := bundle.Scripts[i].SourceFile
+		if sourceFile == "" {
+			continue
+		}
+		cleanName, err := cleanBundlePath(sourceFile)
+		if err != nil {
+			return presetBundle{}, err
+		}
+		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(cleanName)))
+		if err != nil {
+			return presetBundle{}, fmt.Errorf("read source file %s: %w", cleanName, err)
+		}
+		files[cleanName] = data
+	}
+	if err := hydrateBundleSources(&bundle, files); err != nil {
+		return presetBundle{}, err
+	}
+	return bundle, nil
 }

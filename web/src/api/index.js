@@ -122,10 +122,21 @@ export function deleteScript(id) {
   return api.delete(`/scripts/${id}`)
 }
 
-export function exportScripts() {
+export function exportScripts(format = 'json') {
+  if (format === 'tar.gz' || format === 'tar' || format === 'tgz') {
+    return api.get('/scripts/export', { params: { format }, responseType: 'blob' })
+  }
   return api.get('/scripts/export')
 }
 
 export function importScripts(bundle) {
   return api.post('/scripts/import', bundle)
+}
+
+export function importScriptsFile(file) {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post('/scripts/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }

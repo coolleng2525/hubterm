@@ -16,6 +16,7 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Auth     AuthConfig     `yaml:"auth"`
 	Log      LogConfig      `yaml:"log"`
+	Presets  PresetsConfig  `yaml:"presets"`
 }
 
 // ServerConfig holds HTTP server settings.
@@ -27,6 +28,13 @@ type ServerConfig struct {
 // DatabaseConfig holds database settings.
 type DatabaseConfig struct {
 	Path string `yaml:"path"`
+}
+
+// PresetsConfig holds preset script directory settings.
+type PresetsConfig struct {
+	// Dir is the path to a directory containing JSON preset bundles.
+	// Files matching *.json are loaded on startup and merged into the DB.
+	Dir string `yaml:"dir"`
 }
 
 // AuthConfig holds authentication settings.
@@ -58,6 +66,9 @@ func defaults() *Config {
 		Log: LogConfig{
 			Level:  "info",
 			Format: "json",
+		},
+		Presets: PresetsConfig{
+			Dir: "presets",
 		},
 	}
 }
@@ -100,6 +111,9 @@ func Load(path string) (*Config, error) {
 	}
 	if v := os.Getenv("LOG_FORMAT"); v != "" {
 		cfg.Log.Format = v
+	}
+	if v := os.Getenv("PRESETS_DIR"); v != "" {
+		cfg.Presets.Dir = v
 	}
 
 	return cfg, nil
