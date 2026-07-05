@@ -217,6 +217,10 @@ func (s *TopologyService) CheckHealth() map[string]string {
 		if now.Sub(n.LastSeen) > timeout {
 			if n.Status != "offline" {
 				s.DB.Model(&n).Update("status", "offline")
+				// Delete active sessions for the offline node
+				if err := s.DB.Where("node_id = ?", n.NodeID).Delete(&model.Session{}).Error; err != nil {
+					topoLog.Error("failed to clear sessions for offline node", log.Err(err), log.String("node_id", n.NodeID))
+				}
 				topoLog.Info("node marked offline by health check",
 					log.String("node_id", n.NodeID),
 					log.String("last_seen", n.LastSeen.Format(time.RFC3339)),

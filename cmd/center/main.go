@@ -105,6 +105,17 @@ func main() {
 	batchH := handler.NewBatchHandler(model.GetDB(), agentWSH)
 	groupH := handler.NewGroupHandler(model.GetDB(), agentWSH)
 
+	// Start background health checking ticker (every 10 seconds)
+	go func() {
+		// Run initial check on startup
+		topoH.TopologySvc.CheckHealth()
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			topoH.TopologySvc.CheckHealth()
+		}
+	}()
+
 	// public routes
 	r.POST("/api/auth/login", authH.Login)
 	r.POST("/api/auth/register", middleware.AuthRequired(), middleware.AdminRequired(), authH.Register)
