@@ -121,3 +121,11 @@ export function updateScript(id, data) {
 export function deleteScript(id) {
   return api.delete(`/scripts/${id}`)
 }
+
+export function exportScripts() {
+  return api.get('/scripts/export')
+}
+
+export function importScripts(bundle) {
+  return api.post('/scripts/import', bundle)
+}

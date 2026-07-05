@@ -332,6 +332,112 @@ func (h *ScriptHandler) Results(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
+// presetScript is the per-script entry in an import/export bundle.
+type presetScript struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Language    string `json:"language"`
+	Source      string `json:"source"`
+}
+
+// presetBundle is the top-level import/export JSON document.
+type presetBundle struct {
+	Version    string         `json:"version"`
+	ExportedAt string         `json:"exported_at"`
+	Scripts    []presetScript `json:"scripts"`
+}
+
+// Export handles GET /api/scripts/export — return all scripts as a JSON preset bundle.
+func (h *ScriptHandler) Export(c *gin.Context) {
+	var scripts []model.Script
+	if err := h.DB.Order("name asc").Find(&scripts).Error; err != nil {
+		scriptLog.Error("export: failed to query scripts", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	bundle := presetBundle{
+		Version:    "1.0",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Scripts:    make([]presetScript, 0, len(scripts)),
+	}
+	for _, s := range scripts {
+		bundle.Scripts = append(bundle.Scripts, presetScript{
+			Name:        s.Name,
+			Description: s.Description,
+			Language:    s.Language,
+			Source:      s.Source,
+		})
+	}
+
+	scriptLog.Info("scripts exported", log.Int("count", len(bundle.Scripts)))
+	c.JSON(http.StatusOK, bundle)
+}
+
+// Import handles POST /api/scripts/import — bulk-upsert scripts from a JSON preset bundle.
+// Scripts are matched by name: existing ones are updated, new ones are created.
+func (h *ScriptHandler) Import(c *gin.Context) {
+	var bundle presetBundle
+	if err := c.ShouldBindJSON(&bundle); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	imported := 0
+	updated := 0
+
+	for _, ps := range bundle.Scripts {
+		if ps.Name == "" {
+			continue
+		}
+		lang := ps.Language
+		if lang == "" {
+			lang = "python"
+		}
+
+		var existing model.Script
+		err := h.DB.Where("name = ?", ps.Name).First(&existing).Error
+		if err != nil {
+			// Not found — create new.
+			newScript := model.Script{
+				ScriptID:    uuid.New().String(),
+				Name:        ps.Name,
+				Description: ps.Description,
+				Language:    lang,
+				Source:      ps.Source,
+				Params:      "[]",
+			}
+			if dbErr := h.DB.Create(&newScript).Error; dbErr != nil {
+				scriptLog.Error("import: failed to create script",
+					log.String("name", ps.Name),
+					log.Err(dbErr),
+				)
+				continue
+			}
+			imported++
+		} else {
+			// Found — update fields.
+			existing.Description = ps.Description
+			existing.Language = lang
+			existing.Source = ps.Source
+			if dbErr := h.DB.Save(&existing).Error; dbErr != nil {
+				scriptLog.Error("import: failed to update script",
+					log.String("name", ps.Name),
+					log.Err(dbErr),
+				)
+				continue
+			}
+			updated++
+		}
+	}
+
+	scriptLog.Info("scripts imported",
+		log.Int("imported", imported),
+		log.Int("updated", updated),
+	)
+	c.JSON(http.StatusOK, gin.H{"imported": imported, "updated": updated})
+}
+
 // parseScriptParams parses the JSON params string from the database into []script.Param.
 func parseScriptParams(paramsJSON string) []script.Param {
 	if paramsJSON == "" || paramsJSON == "[]" {

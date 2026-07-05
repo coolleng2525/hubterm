@@ -33,26 +33,31 @@
 
       <div class="terminal-sender" style="display:flex;align-items:center;gap:8px;margin-left:15px">
         <span class="config-label">快速发送</span>
-        <el-select
-          v-model="selectedScriptId"
+        <el-autocomplete
+          v-model="scriptSearchText"
+          :fetch-suggestions="queryScripts"
           clearable
           size="small"
-          placeholder="选择预设脚本/命令"
-          style="width:180px"
-          @change="handleScriptChange"
+          placeholder="搜索预设名称..."
+          style="width:200px"
+          value-key="name"
+          @select="handleScriptSelect"
+          @clear="handleScriptClear"
         >
-          <el-option
-            v-for="script in scripts"
-            :key="script.script_id"
-            :label="script.name"
-            :value="script.script_id || script.id"
-          />
-        </el-select>
+          <template #default="{ item }">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span>{{ item.name }}</span>
+              <el-tag size="small" :type="item.language === 'python' ? 'success' : item.language === 'shell' ? 'warning' : 'primary'">
+                {{ item.language === 'python' ? 'py' : item.language === 'shell' ? 'sh' : 'txt' }}
+              </el-tag>
+            </div>
+          </template>
+        </el-autocomplete>
         <el-button
           size="small"
           type="warning"
           link
-          title="设为默认发送项 (空选时点击取消默认)"
+          title="设为默认发送项 (再次点击取消默认)"
           style="padding: 0 4px;"
           @click="setAsDefaultScript"
         >
@@ -70,6 +75,7 @@
         />
         <el-button type="primary" size="small" :disabled="!customSendText && !selectedScript" @click="handleQuickSend">发送</el-button>
       </div>
+
 
       <div class="terminal-config">
         <span class="config-label">保留行数</span>
@@ -114,6 +120,7 @@ const sessionDisplayName = ref('')
 
 // Quick Send state
 const selectedScriptId = ref('')
+const scriptSearchText = ref('')
 const customSendText = ref('')
 const scripts = ref([])
 const selectedScript = ref(null)
@@ -146,6 +153,7 @@ async function fetchScripts() {
       if (found) {
         selectedScriptId.value = defaultScriptId.value
         selectedScript.value = found
+        scriptSearchText.value = found.name
       }
     }
   } catch (error) {
@@ -165,14 +173,29 @@ function setAsDefaultScript() {
   }
 }
 
-function handleScriptChange(val) {
-  if (val) {
-    const found = scripts.value.find(s => (s.script_id || s.id) === val)
-    selectedScript.value = found || null
-  } else {
-    selectedScript.value = null
-  }
+// Autocomplete fuzzy query
+function queryScripts(query, cb) {
+  const q = query.trim().toLowerCase()
+  const results = q
+    ? scripts.value.filter(s =>
+        s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q)
+      )
+    : scripts.value
+  cb(results)
 }
+
+function handleScriptSelect(item) {
+  selectedScript.value = item
+  selectedScriptId.value = item.script_id || item.id
+  scriptSearchText.value = item.name
+}
+
+function handleScriptClear() {
+  selectedScript.value = null
+  selectedScriptId.value = ''
+  scriptSearchText.value = ''
+}
+
 
 async function sendTextToTerminal(text, language = 'shell') {
   if (language === 'python') {

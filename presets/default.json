@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "description": "HubTerm 默认预设命令库",
+  "scripts": [
+    {
+      "name": "查看系统负载",
+      "description": "显示 uptime、CPU 核数和内存使用情况",
+      "language": "text",
+      "source": "uptime\nnproc\nfree -h"
+    },
+    {
+      "name": "查看磁盘使用",
+      "description": "列出所有挂载点的磁盘使用情况",
+      "language": "text",
+      "source": "df -h"
+    },
+    {
+      "name": "查看进程列表 (top 10 CPU)",
+      "description": "按 CPU 占用排序显示前 10 个进程",
+      "language": "text",
+      "source": "ps aux --sort=-%cpu | head -11"
+    },
+    {
+      "name": "查看网络连接",
+      "description": "列出所有 ESTABLISHED 的 TCP 连接",
+      "language": "text",
+      "source": "ss -tunap | grep ESTAB"
+    },
+    {
+      "name": "查看最近系统日志",
+      "description": "显示最近 50 条 systemd 日志",
+      "language": "text",
+      "source": "journalctl -n 50 --no-pager"
+    },
+    {
+      "name": "查看 Docker 容器",
+      "description": "列出所有运行中的 Docker 容器",
+      "language": "text",
+      "source": "docker ps --format 'table {{.ID}}\\t{{.Names}}\\t{{.Status}}\\t{{.Ports}}'"
+    },
+    {
+      "name": "系统信息汇总",
+      "description": "一次性输出 hostname、IP、OS 版本、内核等信息",
+      "language": "shell",
+      "source": "echo '=== Hostname ===' && hostname\necho '=== IP ===' && ip addr show | grep 'inet ' | awk '{print $2}'\necho '=== OS ===' && cat /etc/os-release | grep PRETTY_NAME\necho '=== Kernel ===' && uname -r\necho '=== Uptime ===' && uptime"
+    },
+    {
+      "name": "快速 Ping 测试",
+      "description": "Ping 外网 (baidu + google) 测试网络连通性",
+      "language": "text",
+      "source": "ping -c 3 baidu.com\nping -c 3 8.8.8.8"
+    }
+  ]
+}

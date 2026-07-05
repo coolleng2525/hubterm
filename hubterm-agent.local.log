@@ -1,0 +1,919 @@
+2026/07/05 08:07:55 Agent starting: node_id=2f47b31f-9285-4d60-8392-6d7c08a35584 center=http://192.168.1.55:8097 name=192.168.1.60
+2026/07/05 08:07:55 Node token saved to disk
+2026/07/05 08:07:55 Loaded saved node token
+2026/07/05 08:07:55 Reporter started: node=2f47b31f-9285-4d60-8392-6d7c08a35584 center=http://192.168.1.55:8097 interval=3s
+2026/07/05 08:07:55 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 08:08:19 [connector] received exec command: id=c1d29557-dce2-4d38-84d6-62eadc43baed type=ssh_start command=
+2026/07/05 08:08:19 Received command: id=c1d29557-dce2-4d38-84d6-62eadc43baed type=ssh_start command=
+2026/07/05 08:08:30 [connector] received exec command: id=9b840157-a280-4261-b84e-f15dbd5e3f6c type=write command=
+2026/07/05 08:08:30 Received command: id=9b840157-a280-4261-b84e-f15dbd5e3f6c type=write command=
+2026/07/05 08:08:30 [connector] received exec command: id=87cca8b7-f33d-4927-a040-e9650e87de06 type=write command=
+2026/07/05 08:08:30 Received command: id=87cca8b7-f33d-4927-a040-e9650e87de06 type=write command=
+2026/07/05 08:08:31 [connector] received exec command: id=adc0b99f-f12d-4161-bda2-07e791701ee9 type=write command=
+2026/07/05 08:08:31 Received command: id=adc0b99f-f12d-4161-bda2-07e791701ee9 type=write command=
+2026/07/05 08:08:31 [connector] received exec command: id=076f16ad-d198-4b1f-8d57-1f3391f5eb5e type=write command=
+2026/07/05 08:08:31 Received command: id=076f16ad-d198-4b1f-8d57-1f3391f5eb5e type=write command=
+2026/07/05 08:08:31 [connector] received exec command: id=9064fb85-d1e5-4edc-a59d-d1fe42be75b2 type=write command=
+2026/07/05 08:08:31 Received command: id=9064fb85-d1e5-4edc-a59d-d1fe42be75b2 type=write command=
+2026/07/05 08:08:31 [connector] received exec command: id=488a4e2a-2588-4c76-8aa4-6a5b30c08676 type=write command=
+2026/07/05 08:08:31 Received command: id=488a4e2a-2588-4c76-8aa4-6a5b30c08676 type=write command=
+2026/07/05 08:08:31 [connector] received exec command: id=4d4b18db-6c00-422d-9301-4a805ac90f1f type=write command=
+2026/07/05 08:08:31 Received command: id=4d4b18db-6c00-422d-9301-4a805ac90f1f type=write command=
+2026/07/05 08:08:32 [connector] received exec command: id=396c9305-0728-48a1-835f-9d2395324341 type=write command=
+2026/07/05 08:08:32 Received command: id=396c9305-0728-48a1-835f-9d2395324341 type=write command=
+2026/07/05 08:08:32 [connector] received exec command: id=021394b1-982b-4cdd-bbd1-bcfbe55ac802 type=write command=
+2026/07/05 08:08:32 Received command: id=021394b1-982b-4cdd-bbd1-bcfbe55ac802 type=write command=
+2026/07/05 08:11:21 [connector] received exec command: id=97ee58ec-86f8-4f66-953b-9b0990356ff2 type=ssh_start command=
+2026/07/05 08:11:21 Received command: id=97ee58ec-86f8-4f66-953b-9b0990356ff2 type=ssh_start command=
+2026/07/05 08:13:39 [connector] received exec command: id=b878050c-b4b0-4ec7-aad0-ef1fc29a26fc type=ssh_start command=
+2026/07/05 08:13:39 Received command: id=b878050c-b4b0-4ec7-aad0-ef1fc29a26fc type=ssh_start command=
+2026/07/05 08:13:44 [connector] received exec command: id=c10f4cda-1c3a-42ff-ad7c-970aa89bd1c8 type=ssh_start command=
+2026/07/05 08:13:44 Received command: id=c10f4cda-1c3a-42ff-ad7c-970aa89bd1c8 type=ssh_start command=
+2026/07/05 08:13:51 [connector] received exec command: id=d374428b-6a6b-4ba5-b19d-13708269a65e type=write command=
+2026/07/05 08:13:51 Received command: id=d374428b-6a6b-4ba5-b19d-13708269a65e type=write command=
+2026/07/05 08:14:17 [connector] received exec command: id=035aadfb-5bb7-44c3-8ba5-16f0b8cb70f1 type=write command=
+2026/07/05 08:14:17 Received command: id=035aadfb-5bb7-44c3-8ba5-16f0b8cb70f1 type=write command=
+2026/07/05 08:14:17 [connector] received exec command: id=593223fb-9fac-4d8f-ae44-fca02e8b8e5a type=write command=
+2026/07/05 08:14:17 Received command: id=593223fb-9fac-4d8f-ae44-fca02e8b8e5a type=write command=
+2026/07/05 08:14:18 [connector] received exec command: id=c568ade0-70b5-4dce-bcd8-b327186ed410 type=write command=
+2026/07/05 08:14:18 Received command: id=c568ade0-70b5-4dce-bcd8-b327186ed410 type=write command=
+2026/07/05 08:14:18 [connector] received exec command: id=344abb78-aa12-4f98-91c1-24a0a9d9e114 type=write command=
+2026/07/05 08:14:18 Received command: id=344abb78-aa12-4f98-91c1-24a0a9d9e114 type=write command=
+2026/07/05 08:14:27 [connector] received exec command: id=f62d5094-764f-45fe-943c-9b36deebdf48 type=ssh_start command=
+2026/07/05 08:14:27 Received command: id=f62d5094-764f-45fe-943c-9b36deebdf48 type=ssh_start command=
+2026/07/05 08:15:23 [connector] received exec command: id=f682927b-e17a-40bc-b973-507a076f1b48 type=ssh_start command=
+2026/07/05 08:15:23 Received command: id=f682927b-e17a-40bc-b973-507a076f1b48 type=ssh_start command=
+2026/07/05 08:15:25 [connector] received exec command: id=19861fd4-dd67-407f-94bb-100d5e785164 type=write command=
+2026/07/05 08:15:25 Received command: id=19861fd4-dd67-407f-94bb-100d5e785164 type=write command=
+2026/07/05 08:15:25 [connector] received exec command: id=7581dd2f-a521-46cd-9956-65c597e88fcc type=write command=
+2026/07/05 08:15:25 Received command: id=7581dd2f-a521-46cd-9956-65c597e88fcc type=write command=
+2026/07/05 08:15:48 [connector] received exec command: id=8ef8af12-b0fd-40be-88ec-df5db030f194 type=ssh_start command=
+2026/07/05 08:15:48 Received command: id=8ef8af12-b0fd-40be-88ec-df5db030f194 type=ssh_start command=
+2026/07/05 08:15:50 [connector] received exec command: id=1b3f47fe-07ff-453a-a62f-14574a6a30f8 type=write command=
+2026/07/05 08:15:50 Received command: id=1b3f47fe-07ff-453a-a62f-14574a6a30f8 type=write command=
+2026/07/05 08:15:50 [connector] received exec command: id=8333f1f7-d3b5-4351-bc67-c7f2619ae4c0 type=write command=
+2026/07/05 08:15:50 Received command: id=8333f1f7-d3b5-4351-bc67-c7f2619ae4c0 type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=3165bb61-f75a-4390-92c7-5cc3530808e1 type=write command=
+2026/07/05 08:15:51 Received command: id=3165bb61-f75a-4390-92c7-5cc3530808e1 type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=b2da1eab-e3b6-4e4d-b72b-570aec8df1d0 type=write command=
+2026/07/05 08:15:51 Received command: id=b2da1eab-e3b6-4e4d-b72b-570aec8df1d0 type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=6479c035-8ca3-43ba-8122-deabba31b0ec type=write command=
+2026/07/05 08:15:51 Received command: id=6479c035-8ca3-43ba-8122-deabba31b0ec type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=6c9ee426-6bcc-44b7-ac5f-9b6c7d525e4e type=write command=
+2026/07/05 08:15:51 Received command: id=6c9ee426-6bcc-44b7-ac5f-9b6c7d525e4e type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=df0e3dbb-dd8b-45d8-b47d-773a12fd0ab0 type=write command=
+2026/07/05 08:15:51 Received command: id=df0e3dbb-dd8b-45d8-b47d-773a12fd0ab0 type=write command=
+2026/07/05 08:15:51 [connector] received exec command: id=e1fca46a-51fa-4ad2-9152-b072b7028480 type=write command=
+2026/07/05 08:15:51 Received command: id=e1fca46a-51fa-4ad2-9152-b072b7028480 type=write command=
+2026/07/05 08:15:52 [connector] received exec command: id=764055fd-a16a-4820-aceb-31fdbc73ca6a type=write command=
+2026/07/05 08:15:52 Received command: id=764055fd-a16a-4820-aceb-31fdbc73ca6a type=write command=
+2026/07/05 08:16:09 [connector] received exec command: id=cc096576-d3b5-4df6-9f82-a89e0dcebdfb type=write command=
+2026/07/05 08:16:09 Received command: id=cc096576-d3b5-4df6-9f82-a89e0dcebdfb type=write command=
+2026/07/05 08:16:09 [connector] received exec command: id=c61bb3df-e556-4120-a586-a54c900b2fc6 type=write command=
+2026/07/05 08:16:09 Received command: id=c61bb3df-e556-4120-a586-a54c900b2fc6 type=write command=
+2026/07/05 08:18:16 [connector] received exec command: id=e1ee8b17-88bd-46fe-8e6b-d6ec7dff32d6 type=ssh_start command=
+2026/07/05 08:18:16 Received command: id=e1ee8b17-88bd-46fe-8e6b-d6ec7dff32d6 type=ssh_start command=
+2026/07/05 08:20:17 [connector] received exec command: id=6779c23e-a4c5-45dc-a500-c0ecbde9e984 type=write command=
+2026/07/05 08:20:17 Received command: id=6779c23e-a4c5-45dc-a500-c0ecbde9e984 type=write command=
+2026/07/05 08:20:17 [connector] received exec command: id=a847a2bc-5100-419e-aee1-a07910ad4b34 type=write command=
+2026/07/05 08:20:17 Received command: id=a847a2bc-5100-419e-aee1-a07910ad4b34 type=write command=
+2026/07/05 08:20:18 [connector] received exec command: id=9dd5324c-b246-47c9-9f6b-5fdf1a47861c type=write command=
+2026/07/05 08:20:18 Received command: id=9dd5324c-b246-47c9-9f6b-5fdf1a47861c type=write command=
+2026/07/05 08:20:36 [connector] received exec command: id=8ab32a6a-be8f-417c-b74a-7390e49482cc type=write command=
+2026/07/05 08:20:36 Received command: id=8ab32a6a-be8f-417c-b74a-7390e49482cc type=write command=
+2026/07/05 08:20:36 [connector] received exec command: id=2652895e-d61c-491f-a8d6-636073ad93cb type=write command=
+2026/07/05 08:20:36 Received command: id=2652895e-d61c-491f-a8d6-636073ad93cb type=write command=
+2026/07/05 08:20:37 [connector] received exec command: id=72f104d4-3dc7-4352-b53c-124cdaf77eb7 type=write command=
+2026/07/05 08:20:37 Received command: id=72f104d4-3dc7-4352-b53c-124cdaf77eb7 type=write command=
+2026/07/05 08:20:38 [connector] received exec command: id=08ec76f8-35a6-47d8-ab94-f125a189743f type=write command=
+2026/07/05 08:20:38 Received command: id=08ec76f8-35a6-47d8-ab94-f125a189743f type=write command=
+2026/07/05 08:20:38 [connector] received exec command: id=c181a04d-a864-483f-85e0-02c44cd19724 type=write command=
+2026/07/05 08:20:38 Received command: id=c181a04d-a864-483f-85e0-02c44cd19724 type=write command=
+2026/07/05 08:20:38 [connector] received exec command: id=9d2b87d3-0c8d-4aa1-8402-797cb03eea66 type=write command=
+2026/07/05 08:20:38 Received command: id=9d2b87d3-0c8d-4aa1-8402-797cb03eea66 type=write command=
+2026/07/05 08:20:39 [connector] received exec command: id=6c168769-3c68-4e29-88f1-cec87f97a617 type=write command=
+2026/07/05 08:20:39 Received command: id=6c168769-3c68-4e29-88f1-cec87f97a617 type=write command=
+2026/07/05 08:20:39 [connector] received exec command: id=67660a8b-b90a-475f-836f-b8c8d2f1554c type=write command=
+2026/07/05 08:20:39 Received command: id=67660a8b-b90a-475f-836f-b8c8d2f1554c type=write command=
+2026/07/05 08:20:39 [connector] received exec command: id=c6cea73e-e090-487e-b074-a106f133b294 type=write command=
+2026/07/05 08:20:39 Received command: id=c6cea73e-e090-487e-b074-a106f133b294 type=write command=
+2026/07/05 08:20:40 [connector] received exec command: id=5e38fe68-e266-4888-932c-a2847d295d13 type=write command=
+2026/07/05 08:20:40 Received command: id=5e38fe68-e266-4888-932c-a2847d295d13 type=write command=
+2026/07/05 08:20:40 [connector] received exec command: id=e311bb00-056e-4242-ba1a-c1b15d9b5dcc type=write command=
+2026/07/05 08:20:40 Received command: id=e311bb00-056e-4242-ba1a-c1b15d9b5dcc type=write command=
+2026/07/05 08:20:40 [connector] received exec command: id=b1cb752c-4678-4234-88f9-ea09166b5c87 type=write command=
+2026/07/05 08:20:40 Received command: id=b1cb752c-4678-4234-88f9-ea09166b5c87 type=write command=
+2026/07/05 08:20:40 [connector] received exec command: id=214ab3eb-8af1-46c2-b736-27a860561d07 type=write command=
+2026/07/05 08:20:40 Received command: id=214ab3eb-8af1-46c2-b736-27a860561d07 type=write command=
+2026/07/05 08:20:40 [connector] received exec command: id=3e7113b0-ed6b-411b-9e14-57669b7f8424 type=write command=
+2026/07/05 08:20:40 Received command: id=3e7113b0-ed6b-411b-9e14-57669b7f8424 type=write command=
+2026/07/05 08:20:41 [connector] received exec command: id=abd76b87-6887-45d2-b709-55d7e8f98ba1 type=write command=
+2026/07/05 08:20:41 Received command: id=abd76b87-6887-45d2-b709-55d7e8f98ba1 type=write command=
+2026/07/05 08:20:49 [connector] received exec command: id=5368b3aa-1089-4679-b230-a824f54a4ac7 type=write command=
+2026/07/05 08:20:49 Received command: id=5368b3aa-1089-4679-b230-a824f54a4ac7 type=write command=
+2026/07/05 08:20:49 [connector] received exec command: id=3ed68cbc-767e-485e-b374-a7d9a6f424a5 type=write command=
+2026/07/05 08:20:49 Received command: id=3ed68cbc-767e-485e-b374-a7d9a6f424a5 type=write command=
+2026/07/05 08:20:50 [connector] received exec command: id=57ae0db8-34fc-42dd-8836-faad67eb4efd type=write command=
+2026/07/05 08:20:50 Received command: id=57ae0db8-34fc-42dd-8836-faad67eb4efd type=write command=
+2026/07/05 08:20:50 [connector] received exec command: id=7f59d84c-37b3-4700-b06f-ee9c1ba700c8 type=write command=
+2026/07/05 08:20:50 Received command: id=7f59d84c-37b3-4700-b06f-ee9c1ba700c8 type=write command=
+2026/07/05 08:20:50 [connector] received exec command: id=13e1c3b0-1ea1-4809-bf26-ae623a407af5 type=write command=
+2026/07/05 08:20:50 Received command: id=13e1c3b0-1ea1-4809-bf26-ae623a407af5 type=write command=
+2026/07/05 08:20:51 [connector] received exec command: id=e402057b-6702-4b66-8434-997acb4edf9c type=write command=
+2026/07/05 08:20:51 Received command: id=e402057b-6702-4b66-8434-997acb4edf9c type=write command=
+2026/07/05 08:20:51 [connector] received exec command: id=5b43719d-ab26-4427-a45b-425dd193b014 type=write command=
+2026/07/05 08:20:51 Received command: id=5b43719d-ab26-4427-a45b-425dd193b014 type=write command=
+2026/07/05 08:20:51 [connector] received exec command: id=8fb9ba10-6dcb-445d-9190-70f12a02c634 type=write command=
+2026/07/05 08:20:51 Received command: id=8fb9ba10-6dcb-445d-9190-70f12a02c634 type=write command=
+2026/07/05 08:20:51 [connector] received exec command: id=7343089b-409e-42d7-93e5-06e2580232ae type=write command=
+2026/07/05 08:20:51 Received command: id=7343089b-409e-42d7-93e5-06e2580232ae type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=589b826d-0091-48bb-be5a-c8e12184f36d type=write command=
+2026/07/05 08:20:52 Received command: id=589b826d-0091-48bb-be5a-c8e12184f36d type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=10563903-a76e-45c2-8c65-80470a906244 type=write command=
+2026/07/05 08:20:52 Received command: id=10563903-a76e-45c2-8c65-80470a906244 type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=e0dce4ac-6b05-4279-8fa1-3053c2e2f0e6 type=write command=
+2026/07/05 08:20:52 Received command: id=e0dce4ac-6b05-4279-8fa1-3053c2e2f0e6 type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=91aa3e50-8d68-4c4c-8c6d-a651d70a4db2 type=write command=
+2026/07/05 08:20:52 Received command: id=91aa3e50-8d68-4c4c-8c6d-a651d70a4db2 type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=78d43f99-7312-45db-92f0-5e2f5033f97f type=write command=
+2026/07/05 08:20:52 Received command: id=78d43f99-7312-45db-92f0-5e2f5033f97f type=write command=
+2026/07/05 08:20:52 [connector] received exec command: id=6f573877-f9f7-435d-a7b9-627318d5a65e type=write command=
+2026/07/05 08:20:52 Received command: id=6f573877-f9f7-435d-a7b9-627318d5a65e type=write command=
+2026/07/05 08:20:53 [connector] received exec command: id=6ffb0c68-7766-40b5-911b-f950606d02c9 type=write command=
+2026/07/05 08:20:53 Received command: id=6ffb0c68-7766-40b5-911b-f950606d02c9 type=write command=
+2026/07/05 08:20:53 [connector] received exec command: id=7edf0416-7249-463e-aa9d-d8ad5ebbffa8 type=write command=
+2026/07/05 08:20:53 Received command: id=7edf0416-7249-463e-aa9d-d8ad5ebbffa8 type=write command=
+2026/07/05 08:20:54 [connector] received exec command: id=60a3fff1-1a46-4fb3-9f24-09219f6e2562 type=write command=
+2026/07/05 08:20:54 Received command: id=60a3fff1-1a46-4fb3-9f24-09219f6e2562 type=write command=
+2026/07/05 08:20:54 [connector] received exec command: id=6ff865f8-d7b9-4a8a-afbe-5267ac3e9b42 type=write command=
+2026/07/05 08:20:54 Received command: id=6ff865f8-d7b9-4a8a-afbe-5267ac3e9b42 type=write command=
+2026/07/05 08:20:54 [connector] received exec command: id=4d7172ad-9ef6-4157-b580-2c4050f5957c type=write command=
+2026/07/05 08:20:54 Received command: id=4d7172ad-9ef6-4157-b580-2c4050f5957c type=write command=
+2026/07/05 08:20:54 [connector] received exec command: id=08dae538-4a30-4ebc-a4d0-0e5ad0bfef82 type=write command=
+2026/07/05 08:20:54 Received command: id=08dae538-4a30-4ebc-a4d0-0e5ad0bfef82 type=write command=
+2026/07/05 08:20:54 [connector] received exec command: id=9dc30120-dc0c-47ad-83dd-3e86435feb1b type=write command=
+2026/07/05 08:20:54 Received command: id=9dc30120-dc0c-47ad-83dd-3e86435feb1b type=write command=
+2026/07/05 08:20:55 [connector] received exec command: id=77a0e610-b91d-4b56-ae42-e2aeb07487f6 type=write command=
+2026/07/05 08:20:55 Received command: id=77a0e610-b91d-4b56-ae42-e2aeb07487f6 type=write command=
+2026/07/05 08:22:05 [connector] received exec command: id=1d3e2a04-6cbb-471c-98d2-5f207b141608 type=write command=
+2026/07/05 08:22:05 Received command: id=1d3e2a04-6cbb-471c-98d2-5f207b141608 type=write command=
+2026/07/05 08:22:05 [connector] received exec command: id=3ee05189-d591-47bd-b46d-816e85b1de57 type=write command=
+2026/07/05 08:22:05 Received command: id=3ee05189-d591-47bd-b46d-816e85b1de57 type=write command=
+2026/07/05 08:22:06 [connector] received exec command: id=e91e4269-d8f9-4283-af01-eec78dd5550a type=write command=
+2026/07/05 08:22:06 Received command: id=e91e4269-d8f9-4283-af01-eec78dd5550a type=write command=
+2026/07/05 08:22:10 [connector] received exec command: id=681f740b-34e6-4a0f-9f2f-90bb0afc6d7d type=ssh_start command=
+2026/07/05 08:22:10 Received command: id=681f740b-34e6-4a0f-9f2f-90bb0afc6d7d type=ssh_start command=
+2026/07/05 08:23:32 [connector] received exec command: id=88cc5e30-613d-4c45-98a4-75d69450ba0b type=ssh_start command=
+2026/07/05 08:23:32 Received command: id=88cc5e30-613d-4c45-98a4-75d69450ba0b type=ssh_start command=
+2026/07/05 08:26:24 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 08:26:29 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 08:28:00 [connector] received exec command: id=58a9aa9b-8369-463f-aecd-e6631599c4b7 type=ssh_start command=
+2026/07/05 08:28:00 Received command: id=58a9aa9b-8369-463f-aecd-e6631599c4b7 type=ssh_start command=
+2026/07/05 08:43:58 [connector] received exec command: id=b85d863b-fcc7-42c2-ae13-dde9b08d51ec type=write command=
+2026/07/05 08:43:58 Received command: id=b85d863b-fcc7-42c2-ae13-dde9b08d51ec type=write command=
+2026/07/05 08:43:59 [connector] received exec command: id=dc6e60ed-ac9c-40f1-84be-90a438285ffe type=write command=
+2026/07/05 08:43:59 Received command: id=dc6e60ed-ac9c-40f1-84be-90a438285ffe type=write command=
+2026/07/05 08:43:59 [connector] received exec command: id=584fa316-f8c9-4656-8ac1-faccb921231a type=write command=
+2026/07/05 08:43:59 Received command: id=584fa316-f8c9-4656-8ac1-faccb921231a type=write command=
+2026/07/05 08:46:01 [connector] received exec command: id=c2fbea49-d20e-440a-aed6-c43cdb65c6b6 type=ssh_start command=
+2026/07/05 08:46:01 Received command: id=c2fbea49-d20e-440a-aed6-c43cdb65c6b6 type=ssh_start command=
+2026/07/05 08:46:25 [connector] received exec command: id=7f008de5-0107-4ddf-93ed-e8ffdbb281c8 type=ssh_start command=
+2026/07/05 08:46:25 Received command: id=7f008de5-0107-4ddf-93ed-e8ffdbb281c8 type=ssh_start command=
+2026/07/05 09:09:57 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 09:12:04 [connector] connection error: read message: read tcp 192.168.1.60:56091->192.168.1.55:8097: read: operation timed out, retrying in 5s...
+2026/07/05 09:12:09 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 09:13:21 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 09:13:26 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 09:39:30 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 09:44:37 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 10:18:09 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 10:28:02 [connector] received exec command: id=5a183ebf-f5a4-4e1b-bcf0-35efea045344 type=write command=
+2026/07/05 10:28:02 Received command: id=5a183ebf-f5a4-4e1b-bcf0-35efea045344 type=write command=
+2026/07/05 10:28:02 [connector] received exec command: id=4de148f9-a6d3-4614-b645-0abad4ada424 type=write command=
+2026/07/05 10:28:02 Received command: id=4de148f9-a6d3-4614-b645-0abad4ada424 type=write command=
+2026/07/05 10:28:06 [connector] received exec command: id=cad5b9cd-6f5e-4044-8065-70f66bb7ec8e type=write command=
+2026/07/05 10:28:06 Received command: id=cad5b9cd-6f5e-4044-8065-70f66bb7ec8e type=write command=
+2026/07/05 10:28:06 [connector] received exec command: id=f3659492-2b31-44de-831a-d19915e432d9 type=write command=
+2026/07/05 10:28:06 Received command: id=f3659492-2b31-44de-831a-d19915e432d9 type=write command=
+2026/07/05 10:28:06 [connector] received exec command: id=97540a64-386b-4fdd-9865-8c653d97b506 type=write command=
+2026/07/05 10:28:06 Received command: id=97540a64-386b-4fdd-9865-8c653d97b506 type=write command=
+2026/07/05 10:28:06 [connector] received exec command: id=5c8fc841-0ec6-47be-bcc7-a7f454d6ff61 type=write command=
+2026/07/05 10:28:06 Received command: id=5c8fc841-0ec6-47be-bcc7-a7f454d6ff61 type=write command=
+2026/07/05 10:28:07 [connector] received exec command: id=c5f03d01-68e7-4ca4-a401-02eb87cd4a5c type=write command=
+2026/07/05 10:28:07 Received command: id=c5f03d01-68e7-4ca4-a401-02eb87cd4a5c type=write command=
+2026/07/05 10:28:07 [connector] received exec command: id=a90270d0-c2a6-49a6-bb89-f802b14fc5fa type=write command=
+2026/07/05 10:28:07 Received command: id=a90270d0-c2a6-49a6-bb89-f802b14fc5fa type=write command=
+2026/07/05 10:28:07 [connector] received exec command: id=360731f9-1484-4ac9-af27-285f13f79c59 type=write command=
+2026/07/05 10:28:07 Received command: id=360731f9-1484-4ac9-af27-285f13f79c59 type=write command=
+2026/07/05 10:28:07 [connector] received exec command: id=4094d898-8946-46b8-9032-50951c7ff4fc type=write command=
+2026/07/05 10:28:07 Received command: id=4094d898-8946-46b8-9032-50951c7ff4fc type=write command=
+2026/07/05 10:28:08 [connector] received exec command: id=84997fda-ac5d-477a-aefe-a196f782391c type=write command=
+2026/07/05 10:28:08 Received command: id=84997fda-ac5d-477a-aefe-a196f782391c type=write command=
+2026/07/05 10:28:08 [connector] received exec command: id=f3903d5e-381e-4360-8e4e-650aaca83b1c type=write command=
+2026/07/05 10:28:08 Received command: id=f3903d5e-381e-4360-8e4e-650aaca83b1c type=write command=
+2026/07/05 10:28:08 [connector] received exec command: id=f86443d2-3af0-4e03-805e-00e23f2e0605 type=write command=
+2026/07/05 10:28:08 Received command: id=f86443d2-3af0-4e03-805e-00e23f2e0605 type=write command=
+2026/07/05 10:28:08 [connector] received exec command: id=27f9e2bb-ab1e-4ebb-ba62-190b6f883870 type=write command=
+2026/07/05 10:28:08 Received command: id=27f9e2bb-ab1e-4ebb-ba62-190b6f883870 type=write command=
+2026/07/05 10:28:08 [connector] received exec command: id=79ff1056-43ed-41d4-8d7a-8691cef968d6 type=write command=
+2026/07/05 10:28:08 Received command: id=79ff1056-43ed-41d4-8d7a-8691cef968d6 type=write command=
+2026/07/05 10:28:09 [connector] received exec command: id=a412c2e6-e93e-48e7-942c-30cae5827bdf type=write command=
+2026/07/05 10:28:09 Received command: id=a412c2e6-e93e-48e7-942c-30cae5827bdf type=write command=
+2026/07/05 10:28:09 [connector] received exec command: id=93e90bb5-157f-4b32-aa26-515918a314e0 type=write command=
+2026/07/05 10:28:09 Received command: id=93e90bb5-157f-4b32-aa26-515918a314e0 type=write command=
+2026/07/05 10:28:09 [connector] received exec command: id=35a9127a-7b36-4969-b239-16f8e30a5a4d type=write command=
+2026/07/05 10:28:09 Received command: id=35a9127a-7b36-4969-b239-16f8e30a5a4d type=write command=
+2026/07/05 10:28:09 [connector] received exec command: id=e608212e-f87c-452d-9734-a9bcd2c81d8b type=write command=
+2026/07/05 10:28:09 Received command: id=e608212e-f87c-452d-9734-a9bcd2c81d8b type=write command=
+2026/07/05 10:28:09 [connector] received exec command: id=7ca9c6e5-725a-486b-b84a-c0aad431b60e type=write command=
+2026/07/05 10:28:09 Received command: id=7ca9c6e5-725a-486b-b84a-c0aad431b60e type=write command=
+2026/07/05 10:29:47 [connector] received exec command: id=33d7e916-5bb8-4159-8692-8b4e17249e34 type=write command=
+2026/07/05 10:29:47 Received command: id=33d7e916-5bb8-4159-8692-8b4e17249e34 type=write command=
+2026/07/05 10:29:47 [connector] received exec command: id=6a72e727-1ddb-4981-80fc-06b25a33736d type=write command=
+2026/07/05 10:29:47 Received command: id=6a72e727-1ddb-4981-80fc-06b25a33736d type=write command=
+2026/07/05 10:29:47 [connector] received exec command: id=855c09a1-349d-482e-a6ff-3d9fef228b99 type=write command=
+2026/07/05 10:29:47 Received command: id=855c09a1-349d-482e-a6ff-3d9fef228b99 type=write command=
+2026/07/05 12:02:36 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 12:14:56 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 12:14:56 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:14:57 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:15:00 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:15:03 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:15:06 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:15:09 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": dial tcp 192.168.1.55:8097: connect: host is down
+2026/07/05 12:18:38 [connector] received exec command: id=52cf8a50-7305-4b0d-a6a5-2d55b48d3187 type=ssh_start command=
+2026/07/05 12:18:38 Received command: id=52cf8a50-7305-4b0d-a6a5-2d55b48d3187 type=ssh_start command=
+2026/07/05 12:18:40 [connector] received exec command: id=7ae103ec-c22e-45b3-83ff-da3dbc3f0860 type=write command=
+2026/07/05 12:18:40 Received command: id=7ae103ec-c22e-45b3-83ff-da3dbc3f0860 type=write command=
+2026/07/05 12:18:41 [connector] received exec command: id=6da7a1b1-95f2-4841-b4c9-5b63348d1761 type=write command=
+2026/07/05 12:18:41 Received command: id=6da7a1b1-95f2-4841-b4c9-5b63348d1761 type=write command=
+2026/07/05 12:18:41 [connector] received exec command: id=c356c0ef-cb55-4cc9-b35b-33cc03f4d545 type=write command=
+2026/07/05 12:18:41 Received command: id=c356c0ef-cb55-4cc9-b35b-33cc03f4d545 type=write command=
+2026/07/05 12:18:44 [connector] received exec command: id=d8edea32-6b01-4780-95ce-171c830a7b32 type=ssh_start command=
+2026/07/05 12:18:44 Received command: id=d8edea32-6b01-4780-95ce-171c830a7b32 type=ssh_start command=
+2026/07/05 12:18:45 [connector] received exec command: id=6b901f90-b633-4291-8efc-37ccd1205565 type=write command=
+2026/07/05 12:18:45 Received command: id=6b901f90-b633-4291-8efc-37ccd1205565 type=write command=
+2026/07/05 12:18:45 [connector] received exec command: id=cfa2b651-b6a6-4c0d-b54e-119bb575119a type=write command=
+2026/07/05 12:18:45 Received command: id=cfa2b651-b6a6-4c0d-b54e-119bb575119a type=write command=
+2026/07/05 12:21:54 [connector] received exec command: id=3a358fc0-b0a8-4198-b67f-128446069931 type=write command=
+2026/07/05 12:21:54 Received command: id=3a358fc0-b0a8-4198-b67f-128446069931 type=write command=
+2026/07/05 12:21:54 [connector] received exec command: id=4b175908-ca53-45a9-a5aa-b5175bd0cf40 type=write command=
+2026/07/05 12:21:54 Received command: id=4b175908-ca53-45a9-a5aa-b5175bd0cf40 type=write command=
+2026/07/05 12:21:54 [connector] received exec command: id=a72c9cad-70d3-4d2a-9a0b-bfa4fb9c4e3a type=write command=
+2026/07/05 12:21:54 Received command: id=a72c9cad-70d3-4d2a-9a0b-bfa4fb9c4e3a type=write command=
+2026/07/05 12:21:54 [connector] received exec command: id=72f95bf5-de45-40c0-8527-a7128ce4739b type=write command=
+2026/07/05 12:21:54 Received command: id=72f95bf5-de45-40c0-8527-a7128ce4739b type=write command=
+2026/07/05 12:22:01 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 12:22:06 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 12:29:30 [connector] received exec command: id=b7bda650-535b-4797-8710-318603f591ff type=ssh_start command=
+2026/07/05 12:29:30 Received command: id=b7bda650-535b-4797-8710-318603f591ff type=ssh_start command=
+2026/07/05 12:29:35 [connector] received exec command: id=ddc239b7-3c5d-4dfa-a6df-fa787fd34a6b type=write command=
+2026/07/05 12:29:35 Received command: id=ddc239b7-3c5d-4dfa-a6df-fa787fd34a6b type=write command=
+2026/07/05 12:29:35 [connector] received exec command: id=a1be1e2b-aa6b-4e2e-990e-251076f519bc type=write command=
+2026/07/05 12:29:35 Received command: id=a1be1e2b-aa6b-4e2e-990e-251076f519bc type=write command=
+2026/07/05 12:29:36 [connector] received exec command: id=b9e1c524-7bb3-46c7-9c3e-f3009a873f25 type=write command=
+2026/07/05 12:29:36 Received command: id=b9e1c524-7bb3-46c7-9c3e-f3009a873f25 type=write command=
+2026/07/05 12:29:38 [connector] received exec command: id=f1ffe71c-1918-4472-8d9c-0b7c88b39ef8 type=ssh_start command=
+2026/07/05 12:29:38 Received command: id=f1ffe71c-1918-4472-8d9c-0b7c88b39ef8 type=ssh_start command=
+2026/07/05 12:29:39 [connector] received exec command: id=ffd75773-c33f-4de6-af18-fdda38e3445a type=write command=
+2026/07/05 12:29:39 Received command: id=ffd75773-c33f-4de6-af18-fdda38e3445a type=write command=
+2026/07/05 12:29:40 [connector] received exec command: id=bfc4b0fa-21dc-4249-8064-7952d0082cb0 type=write command=
+2026/07/05 12:29:40 Received command: id=bfc4b0fa-21dc-4249-8064-7952d0082cb0 type=write command=
+2026/07/05 12:29:44 [connector] received exec command: id=0de5716e-5340-40b5-bf1e-4a17858aa60b type=write command=
+2026/07/05 12:29:44 Received command: id=0de5716e-5340-40b5-bf1e-4a17858aa60b type=write command=
+2026/07/05 12:29:44 [connector] received exec command: id=3f555e50-86fc-4766-af7b-35deccd328b2 type=write command=
+2026/07/05 12:29:44 Received command: id=3f555e50-86fc-4766-af7b-35deccd328b2 type=write command=
+2026/07/05 12:29:45 [connector] received exec command: id=5609aee2-c8aa-462e-8501-02e9467458d1 type=write command=
+2026/07/05 12:29:45 Received command: id=5609aee2-c8aa-462e-8501-02e9467458d1 type=write command=
+2026/07/05 12:29:48 [connector] received exec command: id=8b10b3cb-3788-4157-84f1-bd375e83afa4 type=write command=
+2026/07/05 12:29:48 Received command: id=8b10b3cb-3788-4157-84f1-bd375e83afa4 type=write command=
+2026/07/05 12:29:49 [connector] received exec command: id=bb76223f-6330-40fd-9dc9-f1c9682a4849 type=write command=
+2026/07/05 12:29:49 Received command: id=bb76223f-6330-40fd-9dc9-f1c9682a4849 type=write command=
+2026/07/05 12:29:49 [connector] received exec command: id=daa215a3-a452-4392-8cf3-40135fbf833f type=write command=
+2026/07/05 12:29:49 Received command: id=daa215a3-a452-4392-8cf3-40135fbf833f type=write command=
+2026/07/05 12:29:54 [connector] received exec command: id=908f0175-cf90-41d9-89c2-7f4a162aae34 type=write command=
+2026/07/05 12:29:54 Received command: id=908f0175-cf90-41d9-89c2-7f4a162aae34 type=write command=
+2026/07/05 12:29:55 [connector] received exec command: id=115c2ab4-f678-462d-baea-fe711172dcf5 type=write command=
+2026/07/05 12:29:55 Received command: id=115c2ab4-f678-462d-baea-fe711172dcf5 type=write command=
+2026/07/05 12:29:55 [connector] received exec command: id=c8226094-4f3b-4e2c-97d6-975d92bf3d3a type=write command=
+2026/07/05 12:29:55 Received command: id=c8226094-4f3b-4e2c-97d6-975d92bf3d3a type=write command=
+2026/07/05 12:30:03 [connector] received exec command: id=40ebfa3f-63cd-4637-8f84-57386e11d49c type=write command=
+2026/07/05 12:30:03 Received command: id=40ebfa3f-63cd-4637-8f84-57386e11d49c type=write command=
+2026/07/05 12:30:04 [connector] received exec command: id=a796801a-2d42-4455-8104-968d46545110 type=write command=
+2026/07/05 12:30:04 Received command: id=a796801a-2d42-4455-8104-968d46545110 type=write command=
+2026/07/05 12:30:04 [connector] received exec command: id=ee5fcedf-f112-4a3a-920e-d24ecb79cc64 type=write command=
+2026/07/05 12:30:04 Received command: id=ee5fcedf-f112-4a3a-920e-d24ecb79cc64 type=write command=
+2026/07/05 12:30:04 [connector] received exec command: id=dcc0164c-2ebe-4a1e-afbe-a1c721ffd6eb type=write command=
+2026/07/05 12:30:04 Received command: id=dcc0164c-2ebe-4a1e-afbe-a1c721ffd6eb type=write command=
+2026/07/05 12:50:17 Report error: post report: Post "http://192.168.1.55:8097/api/nodes/report": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/07/05 12:58:57 [connector] received exec command: id=e6b5f3f1-bb25-4722-a65f-ba750a3dad44 type=ssh_start command=
+2026/07/05 12:58:57 Received command: id=e6b5f3f1-bb25-4722-a65f-ba750a3dad44 type=ssh_start command=
+2026/07/05 12:59:04 [connector] received exec command: id=7f3cb974-c1a0-4cd6-869b-2eaf0747e019 type=write command=
+2026/07/05 12:59:04 Received command: id=7f3cb974-c1a0-4cd6-869b-2eaf0747e019 type=write command=
+2026/07/05 12:59:04 [connector] received exec command: id=55ef85fa-1d0c-4993-8634-faae23134d2f type=write command=
+2026/07/05 12:59:04 Received command: id=55ef85fa-1d0c-4993-8634-faae23134d2f type=write command=
+2026/07/05 12:59:04 [connector] received exec command: id=47890f5d-8bee-43ae-885d-db766cd1b09b type=write command=
+2026/07/05 12:59:04 Received command: id=47890f5d-8bee-43ae-885d-db766cd1b09b type=write command=
+2026/07/05 13:06:35 [connector] received exec command: id=cf03d8a0-415a-48bd-ae31-e256708a694f type=write command=
+2026/07/05 13:06:35 Received command: id=cf03d8a0-415a-48bd-ae31-e256708a694f type=write command=
+2026/07/05 13:06:35 [connector] received exec command: id=ac671e05-1be8-4251-9a12-7a8669f1c11b type=write command=
+2026/07/05 13:06:35 Received command: id=ac671e05-1be8-4251-9a12-7a8669f1c11b type=write command=
+2026/07/05 13:06:36 [connector] received exec command: id=874195fd-06c9-4bb9-a176-8574bec732c9 type=write command=
+2026/07/05 13:06:36 Received command: id=874195fd-06c9-4bb9-a176-8574bec732c9 type=write command=
+2026/07/05 13:06:55 [connector] received exec command: id=5cf424f0-6d9e-48b6-9011-9a6ff449c8cb type=write command=
+2026/07/05 13:06:55 Received command: id=5cf424f0-6d9e-48b6-9011-9a6ff449c8cb type=write command=
+2026/07/05 13:06:55 [connector] received exec command: id=7f088831-25c8-4513-8485-59c7da184806 type=write command=
+2026/07/05 13:06:55 Received command: id=7f088831-25c8-4513-8485-59c7da184806 type=write command=
+2026/07/05 13:06:55 [connector] received exec command: id=5d03b668-9a53-4f0f-af40-3e5948b2f3fb type=write command=
+2026/07/05 13:06:55 Received command: id=5d03b668-9a53-4f0f-af40-3e5948b2f3fb type=write command=
+2026/07/05 13:06:55 [connector] received exec command: id=e29f41ce-970a-4d12-a81d-ec436ab28cb2 type=write command=
+2026/07/05 13:06:55 Received command: id=e29f41ce-970a-4d12-a81d-ec436ab28cb2 type=write command=
+2026/07/05 13:14:28 [connector] received exec command: id=cbbf82ca-d0f2-469b-b0b0-a5cbac55b4a1 type=ssh_start command=
+2026/07/05 13:14:28 Received command: id=cbbf82ca-d0f2-469b-b0b0-a5cbac55b4a1 type=ssh_start command=
+2026/07/05 13:41:08 [connector] received exec command: id=a0fc5547-1d2c-40f1-8447-b7e104624eaa type=ssh_start command=
+2026/07/05 13:41:08 Received command: id=a0fc5547-1d2c-40f1-8447-b7e104624eaa type=ssh_start command=
+2026/07/05 13:41:12 [connector] received exec command: id=a1a25640-0954-44fc-be60-8ae2a68a24c1 type=ssh_start command=
+2026/07/05 13:41:12 Received command: id=a1a25640-0954-44fc-be60-8ae2a68a24c1 type=ssh_start command=
+2026/07/05 13:48:32 [connector] received exec command: id=3771dfe5-8f39-4f08-a691-5c91359cddc2 type=ssh_start command=
+2026/07/05 13:48:32 Received command: id=3771dfe5-8f39-4f08-a691-5c91359cddc2 type=ssh_start command=
+2026/07/05 13:48:33 [connector] received exec command: id=8afcc667-974c-4e3f-b95b-233e732c9d15 type=write command=
+2026/07/05 13:48:33 Received command: id=8afcc667-974c-4e3f-b95b-233e732c9d15 type=write command=
+2026/07/05 13:48:33 [connector] received exec command: id=48e8d943-4372-449a-b5dc-1744287684c0 type=write command=
+2026/07/05 13:48:33 Received command: id=48e8d943-4372-449a-b5dc-1744287684c0 type=write command=
+2026/07/05 13:51:34 [connector] received exec command: id=08805514-aa60-4304-b2a5-95d1031c98ba type=ssh_start command=
+2026/07/05 13:51:34 Received command: id=08805514-aa60-4304-b2a5-95d1031c98ba type=ssh_start command=
+2026/07/05 13:51:36 [connector] received exec command: id=996cc11f-36fa-4ce7-b9ef-0af2457d4000 type=write command=
+2026/07/05 13:51:36 Received command: id=996cc11f-36fa-4ce7-b9ef-0af2457d4000 type=write command=
+2026/07/05 13:51:37 [connector] received exec command: id=8779a2f0-6376-4003-a991-54fd4960c7fb type=write command=
+2026/07/05 13:51:37 Received command: id=8779a2f0-6376-4003-a991-54fd4960c7fb type=write command=
+2026/07/05 13:51:37 [connector] received exec command: id=9a90b571-6c22-4543-b19f-008cab36092a type=write command=
+2026/07/05 13:51:37 Received command: id=9a90b571-6c22-4543-b19f-008cab36092a type=write command=
+2026/07/05 13:51:38 [connector] received exec command: id=26738179-9b40-4dfb-87fd-2ac409ebcdc1 type=write command=
+2026/07/05 13:51:38 Received command: id=26738179-9b40-4dfb-87fd-2ac409ebcdc1 type=write command=
+2026/07/05 13:51:38 [connector] received exec command: id=c41fa070-0b43-4a8f-8577-857c537fe1cd type=write command=
+2026/07/05 13:51:38 Received command: id=c41fa070-0b43-4a8f-8577-857c537fe1cd type=write command=
+2026/07/05 13:51:38 [connector] received exec command: id=f640871e-db6c-40d4-8aa5-9b1ec6d846d8 type=write command=
+2026/07/05 13:51:38 Received command: id=f640871e-db6c-40d4-8aa5-9b1ec6d846d8 type=write command=
+2026/07/05 13:51:39 [connector] received exec command: id=4066250c-3262-46a4-b4a7-9d7639761cc9 type=write command=
+2026/07/05 13:51:39 Received command: id=4066250c-3262-46a4-b4a7-9d7639761cc9 type=write command=
+2026/07/05 13:51:39 [connector] received exec command: id=472cc7cc-3f5f-4a8e-8997-43d9bb6112e7 type=write command=
+2026/07/05 13:51:39 Received command: id=472cc7cc-3f5f-4a8e-8997-43d9bb6112e7 type=write command=
+2026/07/05 13:51:39 [connector] received exec command: id=d5e5844d-a938-4dcd-8d63-050cf80dbc2a type=write command=
+2026/07/05 13:51:39 Received command: id=d5e5844d-a938-4dcd-8d63-050cf80dbc2a type=write command=
+2026/07/05 13:51:40 [connector] received exec command: id=5befe126-1f10-4a1f-8b2b-b041e4967f77 type=write command=
+2026/07/05 13:51:40 Received command: id=5befe126-1f10-4a1f-8b2b-b041e4967f77 type=write command=
+2026/07/05 13:51:40 [connector] received exec command: id=6c19d28c-1f0a-4f32-b8c6-3f646b41ffb3 type=write command=
+2026/07/05 13:51:40 Received command: id=6c19d28c-1f0a-4f32-b8c6-3f646b41ffb3 type=write command=
+2026/07/05 13:51:40 [connector] received exec command: id=08409d5e-4500-4200-8cd1-2748fc306a53 type=write command=
+2026/07/05 13:51:40 Received command: id=08409d5e-4500-4200-8cd1-2748fc306a53 type=write command=
+2026/07/05 13:51:40 [connector] received exec command: id=f7f72e7e-dcc2-4d48-8701-7eab85d37442 type=write command=
+2026/07/05 13:51:40 Received command: id=f7f72e7e-dcc2-4d48-8701-7eab85d37442 type=write command=
+2026/07/05 13:51:40 [connector] received exec command: id=5eed8a3a-e551-48f4-ac32-99c54bb87d9b type=write command=
+2026/07/05 13:51:40 Received command: id=5eed8a3a-e551-48f4-ac32-99c54bb87d9b type=write command=
+2026/07/05 13:51:41 [connector] received exec command: id=352c114d-8880-4cf2-96f3-1c8e011b86cb type=write command=
+2026/07/05 13:51:41 Received command: id=352c114d-8880-4cf2-96f3-1c8e011b86cb type=write command=
+2026/07/05 13:51:41 [connector] received exec command: id=b97531a3-ebeb-4ccb-a0d0-487688742083 type=write command=
+2026/07/05 13:51:41 Received command: id=b97531a3-ebeb-4ccb-a0d0-487688742083 type=write command=
+2026/07/05 13:56:10 [connector] received exec command: id=0acf6ca4-06ef-476a-be03-7a7ab9cbd6a4 type=write command=
+2026/07/05 13:56:10 Received command: id=0acf6ca4-06ef-476a-be03-7a7ab9cbd6a4 type=write command=
+2026/07/05 13:56:10 [connector] received exec command: id=5ad9562d-1cb2-473b-ac26-69a3795c706d type=write command=
+2026/07/05 13:56:10 Received command: id=5ad9562d-1cb2-473b-ac26-69a3795c706d type=write command=
+2026/07/05 13:56:11 [connector] received exec command: id=e86873e5-3d2c-4ed4-994c-dd3920a400cb type=write command=
+2026/07/05 13:56:11 Received command: id=e86873e5-3d2c-4ed4-994c-dd3920a400cb type=write command=
+2026/07/05 13:56:33 [connector] received exec command: id=d40723f7-4477-4d21-ba04-41d963b21e4e type=write command=
+2026/07/05 13:56:33 Received command: id=d40723f7-4477-4d21-ba04-41d963b21e4e type=write command=
+2026/07/05 13:56:33 [connector] received exec command: id=5c1a4734-59b4-4c99-8153-6000e17ff8d4 type=write command=
+2026/07/05 13:56:33 Received command: id=5c1a4734-59b4-4c99-8153-6000e17ff8d4 type=write command=
+2026/07/05 13:56:33 [connector] received exec command: id=004e8955-b4ba-4658-9875-9547374966ae type=write command=
+2026/07/05 13:56:33 Received command: id=004e8955-b4ba-4658-9875-9547374966ae type=write command=
+2026/07/05 13:56:33 [connector] received exec command: id=5680d249-3da3-4d2c-9d3d-5a2573ec55cc type=write command=
+2026/07/05 13:56:33 Received command: id=5680d249-3da3-4d2c-9d3d-5a2573ec55cc type=write command=
+2026/07/05 13:57:15 [connector] received exec command: id=7da35f88-e751-468a-9804-268318cccd07 type=write command=
+2026/07/05 13:57:15 Received command: id=7da35f88-e751-468a-9804-268318cccd07 type=write command=
+2026/07/05 13:57:16 [connector] received exec command: id=bf7c7e47-2069-4583-ab6d-9275eb77c234 type=write command=
+2026/07/05 13:57:16 Received command: id=bf7c7e47-2069-4583-ab6d-9275eb77c234 type=write command=
+2026/07/05 13:59:51 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 13:59:51 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 13:59:54 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 13:59:56 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 13:59:57 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:00 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:01 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:03 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:06 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:06 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:09 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:11 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:12 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:15 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:16 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:18 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:21 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:21 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:24 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:26 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:27 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:30 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:00:31 [connector] connection error: dial websocket: websocket: bad handshake, retrying in 5s...
+2026/07/05 14:00:36 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 14:03:39 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 14:03:39 Report error: report failed (status 502): <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
+2026/07/05 14:03:44 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 14:09:03 [connector] received exec command: id=afa80036-1f92-4cab-9326-4656b8c2e609 type=ssh_start command=
+2026/07/05 14:09:03 Received command: id=afa80036-1f92-4cab-9326-4656b8c2e609 type=ssh_start command=
+2026/07/05 14:09:07 [connector] received exec command: id=d342768d-d750-4576-8c6a-b8378204bdc0 type=write command=
+2026/07/05 14:09:07 Received command: id=d342768d-d750-4576-8c6a-b8378204bdc0 type=write command=
+2026/07/05 14:09:08 [connector] received exec command: id=b064376c-ff1b-42ba-864f-57b413bd0c19 type=write command=
+2026/07/05 14:09:08 Received command: id=b064376c-ff1b-42ba-864f-57b413bd0c19 type=write command=
+2026/07/05 14:09:12 [connector] received exec command: id=56ada1dc-f85c-4a5f-b135-2bace0a31066 type=write command=
+2026/07/05 14:09:12 Received command: id=56ada1dc-f85c-4a5f-b135-2bace0a31066 type=write command=
+2026/07/05 14:09:12 [connector] received exec command: id=e6b46ff8-332d-4fab-85e6-c62827b05d31 type=write command=
+2026/07/05 14:09:12 Received command: id=e6b46ff8-332d-4fab-85e6-c62827b05d31 type=write command=
+2026/07/05 14:09:14 [connector] received exec command: id=9b904488-9fff-4f10-9159-a5296dafe0e3 type=write command=
+2026/07/05 14:09:14 Received command: id=9b904488-9fff-4f10-9159-a5296dafe0e3 type=write command=
+2026/07/05 14:09:18 [connector] received exec command: id=120b8998-0a8c-4b08-b77a-b448962929ab type=write command=
+2026/07/05 14:09:18 Received command: id=120b8998-0a8c-4b08-b77a-b448962929ab type=write command=
+2026/07/05 14:09:18 [connector] received exec command: id=b96f2fef-7880-4aff-b4b3-0578cdacbf44 type=write command=
+2026/07/05 14:09:18 Received command: id=b96f2fef-7880-4aff-b4b3-0578cdacbf44 type=write command=
+2026/07/05 14:09:19 [connector] received exec command: id=5985ccc2-1c47-40a9-b4c6-1935c0b07c14 type=write command=
+2026/07/05 14:09:19 Received command: id=5985ccc2-1c47-40a9-b4c6-1935c0b07c14 type=write command=
+2026/07/05 14:09:19 [connector] received exec command: id=7234c6fe-3be3-4520-8582-f5048cd516a3 type=write command=
+2026/07/05 14:09:19 Received command: id=7234c6fe-3be3-4520-8582-f5048cd516a3 type=write command=
+2026/07/05 14:09:26 [connector] received exec command: id=3adfbe3c-a5ba-48e4-94f0-27bca8c6e256 type=write command=
+2026/07/05 14:09:26 Received command: id=3adfbe3c-a5ba-48e4-94f0-27bca8c6e256 type=write command=
+2026/07/05 14:09:27 [connector] received exec command: id=ba770521-d339-40b6-9485-f1fe2cf1a941 type=write command=
+2026/07/05 14:09:27 Received command: id=ba770521-d339-40b6-9485-f1fe2cf1a941 type=write command=
+2026/07/05 14:09:28 [connector] received exec command: id=6c31312d-0fdc-4b66-b16c-671e3d372a24 type=write command=
+2026/07/05 14:09:28 Received command: id=6c31312d-0fdc-4b66-b16c-671e3d372a24 type=write command=
+2026/07/05 14:09:29 [connector] received exec command: id=5a6f2fb4-b275-4248-b9ab-5f19f5439514 type=write command=
+2026/07/05 14:09:29 Received command: id=5a6f2fb4-b275-4248-b9ab-5f19f5439514 type=write command=
+2026/07/05 14:10:08 [connector] received exec command: id=507df669-8199-4d29-8377-458e2472b598 type=ssh_start command=
+2026/07/05 14:10:08 Received command: id=507df669-8199-4d29-8377-458e2472b598 type=ssh_start command=
+2026/07/05 14:10:10 [connector] received exec command: id=a9212739-df05-4ada-96ed-0cfa89a9b63d type=write command=
+2026/07/05 14:10:10 Received command: id=a9212739-df05-4ada-96ed-0cfa89a9b63d type=write command=
+2026/07/05 14:10:10 [connector] received exec command: id=c0f42586-b822-416d-af61-73a0f03b3363 type=write command=
+2026/07/05 14:10:10 Received command: id=c0f42586-b822-416d-af61-73a0f03b3363 type=write command=
+2026/07/05 14:10:10 [connector] received exec command: id=6867b4a7-ec4b-4fa3-a50f-28b42385f511 type=write command=
+2026/07/05 14:10:10 Received command: id=6867b4a7-ec4b-4fa3-a50f-28b42385f511 type=write command=
+2026/07/05 14:10:11 [connector] received exec command: id=890f2920-2c75-4f1c-9203-e5b83401ae0d type=write command=
+2026/07/05 14:10:11 Received command: id=890f2920-2c75-4f1c-9203-e5b83401ae0d type=write command=
+2026/07/05 14:10:29 [connector] received exec command: id=0797f4ee-624a-4df4-99e4-e64467dc73e9 type=write command=
+2026/07/05 14:10:29 Received command: id=0797f4ee-624a-4df4-99e4-e64467dc73e9 type=write command=
+2026/07/05 14:10:31 [connector] received exec command: id=3d5bb70c-f0b0-4340-a0b9-82bb01069cfd type=write command=
+2026/07/05 14:10:31 Received command: id=3d5bb70c-f0b0-4340-a0b9-82bb01069cfd type=write command=
+2026/07/05 14:10:33 [connector] received exec command: id=145cfd37-1c2c-4218-8880-bdae998097a1 type=write command=
+2026/07/05 14:10:33 Received command: id=145cfd37-1c2c-4218-8880-bdae998097a1 type=write command=
+2026/07/05 14:10:34 [connector] received exec command: id=61699d0d-1c98-4ea1-af20-0803a98f12dc type=write command=
+2026/07/05 14:10:34 Received command: id=61699d0d-1c98-4ea1-af20-0803a98f12dc type=write command=
+2026/07/05 14:10:34 [connector] received exec command: id=68156b9a-844d-458e-9fd0-166cf63026c9 type=write command=
+2026/07/05 14:10:34 Received command: id=68156b9a-844d-458e-9fd0-166cf63026c9 type=write command=
+2026/07/05 14:10:37 [connector] received exec command: id=d9e21dbe-f470-4ffe-8097-0fb199bb4702 type=ssh_start command=
+2026/07/05 14:10:37 Received command: id=d9e21dbe-f470-4ffe-8097-0fb199bb4702 type=ssh_start command=
+2026/07/05 14:10:41 [connector] received exec command: id=814bea03-87ed-4d9f-8974-3bceb10cbd0c type=write command=
+2026/07/05 14:10:41 Received command: id=814bea03-87ed-4d9f-8974-3bceb10cbd0c type=write command=
+2026/07/05 14:10:41 [connector] received exec command: id=607054b6-9af1-4cb2-a08f-087d9251f6e4 type=write command=
+2026/07/05 14:10:41 Received command: id=607054b6-9af1-4cb2-a08f-087d9251f6e4 type=write command=
+2026/07/05 14:10:41 [connector] received exec command: id=99475539-bcd8-49d7-a726-6409ae7f0738 type=write command=
+2026/07/05 14:10:41 Received command: id=99475539-bcd8-49d7-a726-6409ae7f0738 type=write command=
+2026/07/05 14:10:42 [connector] received exec command: id=7ec49221-5131-4bd2-9900-37401d221ff1 type=write command=
+2026/07/05 14:10:42 Received command: id=7ec49221-5131-4bd2-9900-37401d221ff1 type=write command=
+2026/07/05 14:10:44 [connector] received exec command: id=90523ee5-b73d-448e-87a4-85d9ecc5b008 type=write command=
+2026/07/05 14:10:44 Received command: id=90523ee5-b73d-448e-87a4-85d9ecc5b008 type=write command=
+2026/07/05 14:10:45 [connector] received exec command: id=d88e0751-d072-4dfe-a57b-a0715cdcc0f5 type=write command=
+2026/07/05 14:10:45 Received command: id=d88e0751-d072-4dfe-a57b-a0715cdcc0f5 type=write command=
+2026/07/05 14:10:47 [connector] received exec command: id=f09a0e01-6101-45f3-8fb3-75fdd36212b6 type=write command=
+2026/07/05 14:10:47 Received command: id=f09a0e01-6101-45f3-8fb3-75fdd36212b6 type=write command=
+2026/07/05 14:10:49 [connector] received exec command: id=7b2e9645-0e0c-4002-82bf-f7fd01bbae50 type=write command=
+2026/07/05 14:10:49 Received command: id=7b2e9645-0e0c-4002-82bf-f7fd01bbae50 type=write command=
+2026/07/05 14:10:49 [connector] received exec command: id=f7aad269-537b-416c-b655-ce22f5e08409 type=write command=
+2026/07/05 14:10:49 Received command: id=f7aad269-537b-416c-b655-ce22f5e08409 type=write command=
+2026/07/05 14:10:50 [connector] received exec command: id=3d6653b5-7aad-47b7-9438-0fb532f6f6a4 type=write command=
+2026/07/05 14:10:50 Received command: id=3d6653b5-7aad-47b7-9438-0fb532f6f6a4 type=write command=
+2026/07/05 14:10:50 [connector] received exec command: id=610872f7-7b5d-4c01-93f5-d629544f38c6 type=write command=
+2026/07/05 14:10:50 Received command: id=610872f7-7b5d-4c01-93f5-d629544f38c6 type=write command=
+2026/07/05 14:10:50 [connector] received exec command: id=d8b28c50-1387-499b-9d6e-e8d8b12a2f64 type=write command=
+2026/07/05 14:10:50 Received command: id=d8b28c50-1387-499b-9d6e-e8d8b12a2f64 type=write command=
+2026/07/05 14:10:51 [connector] received exec command: id=24c45def-d577-49a9-83cd-fc3e26c600a5 type=write command=
+2026/07/05 14:10:51 Received command: id=24c45def-d577-49a9-83cd-fc3e26c600a5 type=write command=
+2026/07/05 14:10:51 [connector] received exec command: id=a7e3122f-c366-4cf4-9b66-6eba84cc6c48 type=write command=
+2026/07/05 14:10:51 Received command: id=a7e3122f-c366-4cf4-9b66-6eba84cc6c48 type=write command=
+2026/07/05 14:10:51 [connector] received exec command: id=2c3a7724-f7ac-4ca0-a384-eaa700ae9379 type=write command=
+2026/07/05 14:10:51 Received command: id=2c3a7724-f7ac-4ca0-a384-eaa700ae9379 type=write command=
+2026/07/05 14:10:51 [connector] received exec command: id=874b4f0c-6f8c-4c29-a470-336f2873d086 type=write command=
+2026/07/05 14:10:51 Received command: id=874b4f0c-6f8c-4c29-a470-336f2873d086 type=write command=
+2026/07/05 14:10:52 [connector] received exec command: id=b1c31df2-6234-4647-a79a-d74ef06a9da0 type=write command=
+2026/07/05 14:10:52 Received command: id=b1c31df2-6234-4647-a79a-d74ef06a9da0 type=write command=
+2026/07/05 14:10:52 [connector] received exec command: id=eea527e1-bb14-4669-a783-c07cc368bbe0 type=write command=
+2026/07/05 14:10:52 Received command: id=eea527e1-bb14-4669-a783-c07cc368bbe0 type=write command=
+2026/07/05 14:10:52 [connector] received exec command: id=b6da4c6f-d313-4118-85cf-a753aa374cbc type=write command=
+2026/07/05 14:10:52 Received command: id=b6da4c6f-d313-4118-85cf-a753aa374cbc type=write command=
+2026/07/05 14:10:52 [connector] received exec command: id=11c6a7f1-8fc5-4ba5-a8db-19c138ea6c9c type=write command=
+2026/07/05 14:10:52 Received command: id=11c6a7f1-8fc5-4ba5-a8db-19c138ea6c9c type=write command=
+2026/07/05 14:10:53 [connector] received exec command: id=ad3d701f-5f33-4cb8-baaa-251185d8ca0c type=write command=
+2026/07/05 14:10:53 Received command: id=ad3d701f-5f33-4cb8-baaa-251185d8ca0c type=write command=
+2026/07/05 14:10:53 [connector] received exec command: id=8ec9e4da-c909-44b7-90df-6e805f4736ab type=write command=
+2026/07/05 14:10:53 Received command: id=8ec9e4da-c909-44b7-90df-6e805f4736ab type=write command=
+2026/07/05 14:10:53 [connector] received exec command: id=06fe9091-38e0-4301-a56b-0e2e857dd9a2 type=write command=
+2026/07/05 14:10:53 Received command: id=06fe9091-38e0-4301-a56b-0e2e857dd9a2 type=write command=
+2026/07/05 14:10:53 [connector] received exec command: id=075a13c8-8e16-426b-a1cb-e799e57a9a67 type=write command=
+2026/07/05 14:10:53 Received command: id=075a13c8-8e16-426b-a1cb-e799e57a9a67 type=write command=
+2026/07/05 14:10:53 [connector] received exec command: id=9076b8dc-b3d2-4623-b0e9-07f79e74f875 type=write command=
+2026/07/05 14:10:53 Received command: id=9076b8dc-b3d2-4623-b0e9-07f79e74f875 type=write command=
+2026/07/05 14:10:54 [connector] received exec command: id=852b395e-62fc-427d-b20c-6f7f48697225 type=write command=
+2026/07/05 14:10:54 Received command: id=852b395e-62fc-427d-b20c-6f7f48697225 type=write command=
+2026/07/05 14:10:54 [connector] received exec command: id=6063b9ba-83d7-4864-bc4f-04b59b0dfec7 type=write command=
+2026/07/05 14:10:54 Received command: id=6063b9ba-83d7-4864-bc4f-04b59b0dfec7 type=write command=
+2026/07/05 14:10:54 [connector] received exec command: id=cb9f542e-46cc-4532-ac66-89d4b074a0a5 type=write command=
+2026/07/05 14:10:54 Received command: id=cb9f542e-46cc-4532-ac66-89d4b074a0a5 type=write command=
+2026/07/05 14:10:54 [connector] received exec command: id=bf192699-f2b2-46e1-9662-fa414a94b3a0 type=write command=
+2026/07/05 14:10:54 Received command: id=bf192699-f2b2-46e1-9662-fa414a94b3a0 type=write command=
+2026/07/05 14:10:55 [connector] received exec command: id=3e5a79b3-7d12-4ef7-b2d3-e0db120aa856 type=write command=
+2026/07/05 14:10:55 Received command: id=3e5a79b3-7d12-4ef7-b2d3-e0db120aa856 type=write command=
+2026/07/05 14:11:06 [connector] received exec command: id=45682f33-3039-41f6-8a86-3092721a3403 type=ssh_start command=
+2026/07/05 14:11:06 Received command: id=45682f33-3039-41f6-8a86-3092721a3403 type=ssh_start command=
+2026/07/05 14:11:55 [connector] received exec command: id=d11a7af0-d9b3-408b-8050-122873c42204 type=ssh_start command=
+2026/07/05 14:11:55 Received command: id=d11a7af0-d9b3-408b-8050-122873c42204 type=ssh_start command=
+2026/07/05 14:15:07 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 14:15:12 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
+2026/07/05 14:16:12 [connector] received exec command: id=267ac226-84d6-4ba8-84fe-bd3c4f8eb5bb type=ssh_start command=
+2026/07/05 14:16:12 Received command: id=267ac226-84d6-4ba8-84fe-bd3c4f8eb5bb type=ssh_start command=
+2026/07/05 14:16:16 [connector] received exec command: id=08e9194a-63ed-4f50-b610-dbbf964c1fa2 type=write command=
+2026/07/05 14:16:16 Received command: id=08e9194a-63ed-4f50-b610-dbbf964c1fa2 type=write command=
+2026/07/05 14:22:10 [connector] received exec command: id=b4d6b93f-c456-4149-913a-acdbc17511a7 type=ssh_start command=
+2026/07/05 14:22:10 Received command: id=b4d6b93f-c456-4149-913a-acdbc17511a7 type=ssh_start command=
+2026/07/05 14:22:13 [connector] received exec command: id=3d7e3a07-18a3-4aa2-a6f3-14491eab6467 type=write command=
+2026/07/05 14:22:13 Received command: id=3d7e3a07-18a3-4aa2-a6f3-14491eab6467 type=write command=
+2026/07/05 14:22:13 [connector] received exec command: id=04ccc219-f4d2-40f6-b630-d83f094dac03 type=write command=
+2026/07/05 14:22:13 Received command: id=04ccc219-f4d2-40f6-b630-d83f094dac03 type=write command=
+2026/07/05 14:22:18 [connector] received exec command: id=16f73b77-cb1a-47aa-95f5-dc08e96d16ba type=write command=
+2026/07/05 14:22:18 Received command: id=16f73b77-cb1a-47aa-95f5-dc08e96d16ba type=write command=
+2026/07/05 14:22:44 [connector] received exec command: id=05137065-08ee-4449-8f66-e7d8309f2324 type=ssh_start command=
+2026/07/05 14:22:44 Received command: id=05137065-08ee-4449-8f66-e7d8309f2324 type=ssh_start command=
+2026/07/05 14:23:44 [connector] received exec command: id=2b5e9386-e16d-4908-833e-f352bacd744f type=ssh_start command=
+2026/07/05 14:23:44 Received command: id=2b5e9386-e16d-4908-833e-f352bacd744f type=ssh_start command=
+2026/07/05 14:26:21 [connector] received exec command: id=20f60461-a9e0-4dc0-b2b4-403b8948d7ce type=write command=
+2026/07/05 14:26:21 Received command: id=20f60461-a9e0-4dc0-b2b4-403b8948d7ce type=write command=
+2026/07/05 14:26:21 [connector] received exec command: id=2dacbc20-bdc4-4772-98a2-6f1b5d00a0b1 type=write command=
+2026/07/05 14:26:21 Received command: id=2dacbc20-bdc4-4772-98a2-6f1b5d00a0b1 type=write command=
+2026/07/05 14:26:21 [connector] received exec command: id=83b9cf5e-300c-4b87-b6b7-924502a53bee type=write command=
+2026/07/05 14:26:21 Received command: id=83b9cf5e-300c-4b87-b6b7-924502a53bee type=write command=
+2026/07/05 14:26:49 [connector] received exec command: id=677102ec-ce77-4405-9e45-02b15fe94b88 type=write command=
+2026/07/05 14:26:49 Received command: id=677102ec-ce77-4405-9e45-02b15fe94b88 type=write command=
+2026/07/05 14:27:07 [connector] received exec command: id=af127d93-69a4-4784-ba2a-c997ab879331 type=ssh_start command=
+2026/07/05 14:27:07 Received command: id=af127d93-69a4-4784-ba2a-c997ab879331 type=ssh_start command=
+2026/07/05 14:27:59 [connector] received exec command: id=a8df1785-1a99-41b9-843c-e0a40516ccde type=ssh_start command=
+2026/07/05 14:27:59 Received command: id=a8df1785-1a99-41b9-843c-e0a40516ccde type=ssh_start command=
+2026/07/05 14:28:08 [connector] received exec command: id=70d8cabd-bdb2-4aac-a784-517d2d8cda51 type=write command=
+2026/07/05 14:28:08 Received command: id=70d8cabd-bdb2-4aac-a784-517d2d8cda51 type=write command=
+2026/07/05 14:28:08 [connector] received exec command: id=fa204624-d748-441f-89ae-af4408d9615e type=write command=
+2026/07/05 14:28:08 Received command: id=fa204624-d748-441f-89ae-af4408d9615e type=write command=
+2026/07/05 14:28:16 [connector] received exec command: id=460ed88b-8302-47a4-bfa3-cb194446eb81 type=ssh_start command=
+2026/07/05 14:28:16 Received command: id=460ed88b-8302-47a4-bfa3-cb194446eb81 type=ssh_start command=
+2026/07/05 14:28:24 [connector] received exec command: id=c68cca05-2117-4e59-af3f-ddcbb902662b type=write command=
+2026/07/05 14:28:24 Received command: id=c68cca05-2117-4e59-af3f-ddcbb902662b type=write command=
+2026/07/05 14:28:24 [connector] received exec command: id=8e38cc68-2b54-4217-aed4-ebcb1726ba8c type=write command=
+2026/07/05 14:28:24 Received command: id=8e38cc68-2b54-4217-aed4-ebcb1726ba8c type=write command=
+2026/07/05 14:28:53 [connector] received exec command: id=4b780f8f-80ad-4032-b6e7-abda5e89f256 type=write command=
+2026/07/05 14:28:53 Received command: id=4b780f8f-80ad-4032-b6e7-abda5e89f256 type=write command=
+2026/07/05 14:28:53 [connector] received exec command: id=68dbc698-a529-4c56-928c-7253cde303a9 type=write command=
+2026/07/05 14:28:53 Received command: id=68dbc698-a529-4c56-928c-7253cde303a9 type=write command=
+2026/07/05 14:28:53 [connector] received exec command: id=6d03beec-f9d6-47f3-918a-ebb1758d5a0e type=write command=
+2026/07/05 14:28:53 Received command: id=6d03beec-f9d6-47f3-918a-ebb1758d5a0e type=write command=
+2026/07/05 14:28:54 [connector] received exec command: id=0123bd2f-064a-4649-af71-d350ef64204d type=write command=
+2026/07/05 14:28:54 Received command: id=0123bd2f-064a-4649-af71-d350ef64204d type=write command=
+2026/07/05 14:28:56 [connector] received exec command: id=e24e96a5-97da-4839-b609-359b35df436f type=write command=
+2026/07/05 14:28:56 Received command: id=e24e96a5-97da-4839-b609-359b35df436f type=write command=
+2026/07/05 14:28:56 [connector] received exec command: id=916e36fd-e76a-444e-94b0-9240a13c6862 type=write command=
+2026/07/05 14:28:56 Received command: id=916e36fd-e76a-444e-94b0-9240a13c6862 type=write command=
+2026/07/05 14:28:56 [connector] received exec command: id=9961dde3-505a-4583-b358-a67c1ff1853a type=write command=
+2026/07/05 14:28:56 Received command: id=9961dde3-505a-4583-b358-a67c1ff1853a type=write command=
+2026/07/05 14:28:58 [connector] received exec command: id=37fda67e-0ab1-46a7-80a0-e4e8e90a7047 type=write command=
+2026/07/05 14:28:58 Received command: id=37fda67e-0ab1-46a7-80a0-e4e8e90a7047 type=write command=
+2026/07/05 14:28:58 [connector] received exec command: id=6b337bf9-89ad-4b67-b770-2892b63bf5a8 type=write command=
+2026/07/05 14:28:58 Received command: id=6b337bf9-89ad-4b67-b770-2892b63bf5a8 type=write command=
+2026/07/05 14:28:58 [connector] received exec command: id=4fe0316f-7c81-40bb-b8a7-a801b5dcd01d type=write command=
+2026/07/05 14:28:58 Received command: id=4fe0316f-7c81-40bb-b8a7-a801b5dcd01d type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=c9b026f4-d17f-4566-bc5b-840b840b0b73 type=write command=
+2026/07/05 14:28:59 Received command: id=c9b026f4-d17f-4566-bc5b-840b840b0b73 type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=d49e018b-ead5-497c-9afd-5e7c21e4b099 type=write command=
+2026/07/05 14:28:59 Received command: id=d49e018b-ead5-497c-9afd-5e7c21e4b099 type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=8733d7a4-193c-428b-9ae1-5789080a5223 type=write command=
+2026/07/05 14:28:59 Received command: id=8733d7a4-193c-428b-9ae1-5789080a5223 type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=5d2a3584-95ef-42ab-9237-251eb3a750dc type=write command=
+2026/07/05 14:28:59 Received command: id=5d2a3584-95ef-42ab-9237-251eb3a750dc type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=625c5e27-9ac7-4255-9848-35f1e1830d5d type=write command=
+2026/07/05 14:28:59 Received command: id=625c5e27-9ac7-4255-9848-35f1e1830d5d type=write command=
+2026/07/05 14:28:59 [connector] received exec command: id=4ef66379-8640-4d1a-aa65-7a788d8ab651 type=write command=
+2026/07/05 14:28:59 Received command: id=4ef66379-8640-4d1a-aa65-7a788d8ab651 type=write command=
+2026/07/05 14:29:00 [connector] received exec command: id=8da14a17-699f-452b-833e-445c25a7e358 type=write command=
+2026/07/05 14:29:00 Received command: id=8da14a17-699f-452b-833e-445c25a7e358 type=write command=
+2026/07/05 14:29:01 [connector] received exec command: id=fa768414-a9a3-4e05-a45f-c24570927613 type=write command=
+2026/07/05 14:29:01 Received command: id=fa768414-a9a3-4e05-a45f-c24570927613 type=write command=
+2026/07/05 14:29:01 [connector] received exec command: id=7cf58c25-4940-4baa-84ac-546aecd9249c type=write command=
+2026/07/05 14:29:01 Received command: id=7cf58c25-4940-4baa-84ac-546aecd9249c type=write command=
+2026/07/05 14:29:02 [connector] received exec command: id=a71f79ea-281f-4b39-aa9b-857ca69a6c51 type=write command=
+2026/07/05 14:29:02 Received command: id=a71f79ea-281f-4b39-aa9b-857ca69a6c51 type=write command=
+2026/07/05 14:29:03 [connector] received exec command: id=a7c9089b-1343-45af-a698-538c83d82d49 type=write command=
+2026/07/05 14:29:03 Received command: id=a7c9089b-1343-45af-a698-538c83d82d49 type=write command=
+2026/07/05 14:29:03 [connector] received exec command: id=267ae161-9837-45c0-bff6-e974bc2093e8 type=write command=
+2026/07/05 14:29:03 Received command: id=267ae161-9837-45c0-bff6-e974bc2093e8 type=write command=
+2026/07/05 14:29:03 [connector] received exec command: id=c655d14d-81c5-4b1d-bee5-e66ff57849eb type=write command=
+2026/07/05 14:29:03 Received command: id=c655d14d-81c5-4b1d-bee5-e66ff57849eb type=write command=
+2026/07/05 14:29:03 [connector] received exec command: id=8fcc2d96-6265-4ad2-ba7f-beb3b9aeabc3 type=write command=
+2026/07/05 14:29:03 Received command: id=8fcc2d96-6265-4ad2-ba7f-beb3b9aeabc3 type=write command=
+2026/07/05 14:29:03 [connector] received exec command: id=52d64d7b-d0e8-4993-a472-59e749d04e1e type=write command=
+2026/07/05 14:29:03 Received command: id=52d64d7b-d0e8-4993-a472-59e749d04e1e type=write command=
+2026/07/05 14:29:04 [connector] received exec command: id=4ae2f40e-1eed-4a4b-876c-2dc8b60f32d3 type=write command=
+2026/07/05 14:29:04 Received command: id=4ae2f40e-1eed-4a4b-876c-2dc8b60f32d3 type=write command=
+2026/07/05 14:29:04 [connector] received exec command: id=5bb6f077-2b9e-405e-aa0d-613c6da68f52 type=write command=
+2026/07/05 14:29:04 Received command: id=5bb6f077-2b9e-405e-aa0d-613c6da68f52 type=write command=
+2026/07/05 14:29:04 [connector] received exec command: id=96cb5a54-7627-4633-bacb-e4c210b8143d type=write command=
+2026/07/05 14:29:04 Received command: id=96cb5a54-7627-4633-bacb-e4c210b8143d type=write command=
+2026/07/05 14:29:04 [connector] received exec command: id=ffc3ed8b-8d77-4cf2-ae48-51a0b4964a77 type=write command=
+2026/07/05 14:29:04 Received command: id=ffc3ed8b-8d77-4cf2-ae48-51a0b4964a77 type=write command=
+2026/07/05 14:29:05 [connector] received exec command: id=729c0189-3509-454c-afd0-1035bc3deba6 type=write command=
+2026/07/05 14:29:05 Received command: id=729c0189-3509-454c-afd0-1035bc3deba6 type=write command=
+2026/07/05 14:29:05 [connector] received exec command: id=09fda523-3cb0-469e-a0d6-2f1ff3d90d84 type=write command=
+2026/07/05 14:29:05 Received command: id=09fda523-3cb0-469e-a0d6-2f1ff3d90d84 type=write command=
+2026/07/05 14:29:05 [connector] received exec command: id=e1cdc216-94d4-4302-bec1-03796fa7bd90 type=write command=
+2026/07/05 14:29:05 Received command: id=e1cdc216-94d4-4302-bec1-03796fa7bd90 type=write command=
+2026/07/05 14:29:05 [connector] received exec command: id=49421c9f-37eb-46a5-bfd5-fcc8ef4df209 type=write command=
+2026/07/05 14:29:05 Received command: id=49421c9f-37eb-46a5-bfd5-fcc8ef4df209 type=write command=
+2026/07/05 14:29:05 [connector] received exec command: id=21f7ca1f-889f-4ca4-bac5-456a8f1265c5 type=write command=
+2026/07/05 14:29:05 Received command: id=21f7ca1f-889f-4ca4-bac5-456a8f1265c5 type=write command=
+2026/07/05 14:29:07 [connector] received exec command: id=c9ea0984-59bb-42fc-8f50-c2aa32592669 type=write command=
+2026/07/05 14:29:07 Received command: id=c9ea0984-59bb-42fc-8f50-c2aa32592669 type=write command=
+2026/07/05 14:29:07 [connector] received exec command: id=a02386ff-cf1c-49a3-8f94-aafc9f475dbf type=write command=
+2026/07/05 14:29:07 Received command: id=a02386ff-cf1c-49a3-8f94-aafc9f475dbf type=write command=
+2026/07/05 14:29:12 [connector] received exec command: id=a5afb63d-a963-47a0-a5ec-a2eca21cbd1c type=write command=
+2026/07/05 14:29:12 Received command: id=a5afb63d-a963-47a0-a5ec-a2eca21cbd1c type=write command=
+2026/07/05 14:29:13 [connector] received exec command: id=171d4f66-5278-46ff-8ec0-4e8b9fb2a2ba type=write command=
+2026/07/05 14:29:13 Received command: id=171d4f66-5278-46ff-8ec0-4e8b9fb2a2ba type=write command=
+2026/07/05 14:29:13 [connector] received exec command: id=9ee2f388-a2e8-4dd6-a27c-4327fc61a409 type=write command=
+2026/07/05 14:29:13 Received command: id=9ee2f388-a2e8-4dd6-a27c-4327fc61a409 type=write command=
+2026/07/05 14:29:13 [connector] received exec command: id=8627c96b-45cc-4655-a23c-613d0b25940a type=write command=
+2026/07/05 14:29:13 Received command: id=8627c96b-45cc-4655-a23c-613d0b25940a type=write command=
+2026/07/05 14:29:14 [connector] received exec command: id=7799902d-f4f3-4365-bb89-1cb1dc9226ad type=write command=
+2026/07/05 14:29:14 Received command: id=7799902d-f4f3-4365-bb89-1cb1dc9226ad type=write command=
+2026/07/05 14:29:14 [connector] received exec command: id=6ed18e99-8f14-480e-ab3b-0e242ae8343b type=write command=
+2026/07/05 14:29:14 Received command: id=6ed18e99-8f14-480e-ab3b-0e242ae8343b type=write command=
+2026/07/05 14:29:14 [connector] received exec command: id=01b693ae-cf22-4f4c-85b9-d80fcac613b6 type=write command=
+2026/07/05 14:29:14 Received command: id=01b693ae-cf22-4f4c-85b9-d80fcac613b6 type=write command=
+2026/07/05 14:29:14 [connector] received exec command: id=c2926d95-0a37-4bac-af15-94699294ac07 type=write command=
+2026/07/05 14:29:14 Received command: id=c2926d95-0a37-4bac-af15-94699294ac07 type=write command=
+2026/07/05 14:29:14 [connector] received exec command: id=0fbd7e79-5a7d-44f8-afc1-e58ef4cf3ddb type=write command=
+2026/07/05 14:29:14 Received command: id=0fbd7e79-5a7d-44f8-afc1-e58ef4cf3ddb type=write command=
+2026/07/05 14:29:15 [connector] received exec command: id=4ef05d9f-1cf9-44ab-9f10-3239e6390109 type=write command=
+2026/07/05 14:29:15 Received command: id=4ef05d9f-1cf9-44ab-9f10-3239e6390109 type=write command=
+2026/07/05 14:29:15 [connector] received exec command: id=4cff93b2-bc90-415c-8fe2-749a7e00e74a type=write command=
+2026/07/05 14:29:15 Received command: id=4cff93b2-bc90-415c-8fe2-749a7e00e74a type=write command=
+2026/07/05 14:29:15 [connector] received exec command: id=1d9960b1-9829-4593-b12a-8811951866e3 type=write command=
+2026/07/05 14:29:15 Received command: id=1d9960b1-9829-4593-b12a-8811951866e3 type=write command=
+2026/07/05 14:29:16 [connector] received exec command: id=7b9acf75-51d6-4e92-a9f2-029ebecdc269 type=write command=
+2026/07/05 14:29:16 Received command: id=7b9acf75-51d6-4e92-a9f2-029ebecdc269 type=write command=
+2026/07/05 14:29:16 [connector] received exec command: id=5e5d1003-fdd3-4989-8a42-39223648f5cc type=write command=
+2026/07/05 14:29:16 Received command: id=5e5d1003-fdd3-4989-8a42-39223648f5cc type=write command=
+2026/07/05 14:29:16 [connector] received exec command: id=7670db1b-0a17-4bcf-9d66-4993c8bc0a59 type=write command=
+2026/07/05 14:29:16 Received command: id=7670db1b-0a17-4bcf-9d66-4993c8bc0a59 type=write command=
+2026/07/05 14:29:16 [connector] received exec command: id=5cbe3fc3-6e64-45a5-873a-425dd005ee45 type=write command=
+2026/07/05 14:29:16 Received command: id=5cbe3fc3-6e64-45a5-873a-425dd005ee45 type=write command=
+2026/07/05 14:29:17 [connector] received exec command: id=90fcfa55-b10e-472e-9f7e-7d6a4e28780c type=write command=
+2026/07/05 14:29:17 Received command: id=90fcfa55-b10e-472e-9f7e-7d6a4e28780c type=write command=
+2026/07/05 14:29:17 [connector] received exec command: id=342d67c0-1cd7-4432-bd7c-a511887bc6b9 type=write command=
+2026/07/05 14:29:17 Received command: id=342d67c0-1cd7-4432-bd7c-a511887bc6b9 type=write command=
+2026/07/05 14:29:18 [connector] received exec command: id=838e34db-b4b0-4449-b372-016ada285ee4 type=write command=
+2026/07/05 14:29:18 Received command: id=838e34db-b4b0-4449-b372-016ada285ee4 type=write command=
+2026/07/05 14:29:18 [connector] received exec command: id=82994ff5-a7cf-44ca-82c1-4d810d96a4a6 type=write command=
+2026/07/05 14:29:18 Received command: id=82994ff5-a7cf-44ca-82c1-4d810d96a4a6 type=write command=
+2026/07/05 14:29:18 [connector] received exec command: id=34cd7531-2a12-4872-8f4f-0635f2497abf type=write command=
+2026/07/05 14:29:18 Received command: id=34cd7531-2a12-4872-8f4f-0635f2497abf type=write command=
+2026/07/05 14:29:18 [connector] received exec command: id=a3106ca3-1d05-4858-9194-3654b1d6f342 type=write command=
+2026/07/05 14:29:18 Received command: id=a3106ca3-1d05-4858-9194-3654b1d6f342 type=write command=
+2026/07/05 14:29:23 [connector] received exec command: id=17f6e5ee-fede-4c66-8979-548d9e31e61d type=write command=
+2026/07/05 14:29:23 Received command: id=17f6e5ee-fede-4c66-8979-548d9e31e61d type=write command=
+2026/07/05 14:29:23 [connector] received exec command: id=ec596179-1284-409a-8beb-3840638423af type=write command=
+2026/07/05 14:29:23 Received command: id=ec596179-1284-409a-8beb-3840638423af type=write command=
+2026/07/05 14:29:23 [connector] received exec command: id=bdf720be-189c-4142-87c5-fb3717452d25 type=write command=
+2026/07/05 14:29:23 Received command: id=bdf720be-189c-4142-87c5-fb3717452d25 type=write command=
+2026/07/05 14:29:24 [connector] received exec command: id=57b8d47a-0681-4007-955f-090ca17126e0 type=write command=
+2026/07/05 14:29:24 Received command: id=57b8d47a-0681-4007-955f-090ca17126e0 type=write command=
+2026/07/05 14:29:24 [connector] received exec command: id=baaf91c0-656c-4122-a1c7-851861a5aeff type=write command=
+2026/07/05 14:29:24 Received command: id=baaf91c0-656c-4122-a1c7-851861a5aeff type=write command=
+2026/07/05 14:29:24 [connector] received exec command: id=0a5c08a1-354d-4ca5-92fb-a59c830918cb type=write command=
+2026/07/05 14:29:24 Received command: id=0a5c08a1-354d-4ca5-92fb-a59c830918cb type=write command=
+2026/07/05 14:29:24 [connector] received exec command: id=c26810e5-e2fd-4314-b9cc-85354dd97c11 type=write command=
+2026/07/05 14:29:24 Received command: id=c26810e5-e2fd-4314-b9cc-85354dd97c11 type=write command=
+2026/07/05 14:29:25 [connector] received exec command: id=99453cca-5c85-4830-93dc-ec7d7a8398ac type=write command=
+2026/07/05 14:29:25 Received command: id=99453cca-5c85-4830-93dc-ec7d7a8398ac type=write command=
+2026/07/05 14:29:25 [connector] received exec command: id=ee70c102-ef4c-4b2f-ab85-a7dc2c98d529 type=write command=
+2026/07/05 14:29:25 Received command: id=ee70c102-ef4c-4b2f-ab85-a7dc2c98d529 type=write command=
+2026/07/05 14:29:25 [connector] received exec command: id=0488002c-2844-4413-ac69-015cf7b253a1 type=write command=
+2026/07/05 14:29:25 Received command: id=0488002c-2844-4413-ac69-015cf7b253a1 type=write command=
+2026/07/05 14:29:25 [connector] received exec command: id=fc94e77f-6b25-4593-ac52-0ad48b257dc4 type=write command=
+2026/07/05 14:29:25 Received command: id=fc94e77f-6b25-4593-ac52-0ad48b257dc4 type=write command=
+2026/07/05 14:29:25 [connector] received exec command: id=464be578-1b77-430c-af97-e2a545875d94 type=write command=
+2026/07/05 14:29:25 Received command: id=464be578-1b77-430c-af97-e2a545875d94 type=write command=
+2026/07/05 14:29:26 [connector] received exec command: id=7d4c9da2-5017-4ee5-b141-8e15c753473b type=write command=
+2026/07/05 14:29:26 Received command: id=7d4c9da2-5017-4ee5-b141-8e15c753473b type=write command=
+2026/07/05 14:29:26 [connector] received exec command: id=71ab5b6b-1dba-4589-bd41-21560746e3ef type=write command=
+2026/07/05 14:29:26 Received command: id=71ab5b6b-1dba-4589-bd41-21560746e3ef type=write command=
+2026/07/05 14:29:26 [connector] received exec command: id=dd5f7db3-0f2a-4775-9a8c-085ea86ea371 type=write command=
+2026/07/05 14:29:26 Received command: id=dd5f7db3-0f2a-4775-9a8c-085ea86ea371 type=write command=
+2026/07/05 14:29:26 [connector] received exec command: id=94269e98-b8c4-4e17-ba36-177abb59064d type=write command=
+2026/07/05 14:29:26 Received command: id=94269e98-b8c4-4e17-ba36-177abb59064d type=write command=
+2026/07/05 14:29:27 [connector] received exec command: id=ae0b7ffc-bdd0-43cb-baa2-e07c1a26cf8f type=write command=
+2026/07/05 14:29:27 Received command: id=ae0b7ffc-bdd0-43cb-baa2-e07c1a26cf8f type=write command=
+2026/07/05 14:29:28 [connector] received exec command: id=3c24817d-044b-4c5f-8fd2-5a7dcaf5841f type=write command=
+2026/07/05 14:29:28 Received command: id=3c24817d-044b-4c5f-8fd2-5a7dcaf5841f type=write command=
+2026/07/05 14:29:28 [connector] received exec command: id=ef4f00dd-521c-4c0e-abd8-e37e618527e9 type=write command=
+2026/07/05 14:29:28 Received command: id=ef4f00dd-521c-4c0e-abd8-e37e618527e9 type=write command=
+2026/07/05 14:29:28 [connector] received exec command: id=5f1a17d1-7f06-4048-b086-c9f2884932ac type=write command=
+2026/07/05 14:29:28 Received command: id=5f1a17d1-7f06-4048-b086-c9f2884932ac type=write command=
+2026/07/05 14:29:29 [connector] received exec command: id=50a11d44-f2f6-4db3-8202-56f2b57cb791 type=write command=
+2026/07/05 14:29:29 Received command: id=50a11d44-f2f6-4db3-8202-56f2b57cb791 type=write command=
+2026/07/05 14:29:29 [connector] received exec command: id=4b5bba10-383c-401b-b5af-cc81e28cb0eb type=write command=
+2026/07/05 14:29:29 Received command: id=4b5bba10-383c-401b-b5af-cc81e28cb0eb type=write command=
+2026/07/05 14:29:29 [connector] received exec command: id=f66e1bba-e8a3-4b63-a3d3-d41bd82f6aaa type=write command=
+2026/07/05 14:29:29 Received command: id=f66e1bba-e8a3-4b63-a3d3-d41bd82f6aaa type=write command=
+2026/07/05 14:29:29 [connector] received exec command: id=25808a28-c80e-4ef3-b72d-353004b4a9c6 type=write command=
+2026/07/05 14:29:29 Received command: id=25808a28-c80e-4ef3-b72d-353004b4a9c6 type=write command=
+2026/07/05 14:29:30 [connector] received exec command: id=cef31c1d-8715-42d9-bc10-139735050c2f type=write command=
+2026/07/05 14:29:30 Received command: id=cef31c1d-8715-42d9-bc10-139735050c2f type=write command=
+2026/07/05 14:29:30 [connector] received exec command: id=4fa4daed-ce5d-4f44-a1c2-b43afbe6480c type=write command=
+2026/07/05 14:29:30 Received command: id=4fa4daed-ce5d-4f44-a1c2-b43afbe6480c type=write command=
+2026/07/05 14:29:31 [connector] received exec command: id=2bbb0b00-6f4a-43bc-9e13-279752404c57 type=write command=
+2026/07/05 14:29:31 Received command: id=2bbb0b00-6f4a-43bc-9e13-279752404c57 type=write command=
+2026/07/05 14:29:31 [connector] received exec command: id=3ab19a65-8e52-4c63-90db-684ee8bebb7b type=write command=
+2026/07/05 14:29:31 Received command: id=3ab19a65-8e52-4c63-90db-684ee8bebb7b type=write command=
+2026/07/05 14:29:31 [connector] received exec command: id=7aa30893-7a94-4253-af98-bf0c5507f442 type=write command=
+2026/07/05 14:29:31 Received command: id=7aa30893-7a94-4253-af98-bf0c5507f442 type=write command=
+2026/07/05 14:29:31 [connector] received exec command: id=06c53ecf-6dd7-49b6-bb85-6c16c5f41fa9 type=write command=
+2026/07/05 14:29:31 Received command: id=06c53ecf-6dd7-49b6-bb85-6c16c5f41fa9 type=write command=
+2026/07/05 14:29:32 [connector] received exec command: id=2988c55e-d944-4c86-bc41-7479c023847d type=write command=
+2026/07/05 14:29:32 Received command: id=2988c55e-d944-4c86-bc41-7479c023847d type=write command=
+2026/07/05 14:29:32 [connector] received exec command: id=10abf444-b4fc-46fb-9595-85000bf8777b type=write command=
+2026/07/05 14:29:32 Received command: id=10abf444-b4fc-46fb-9595-85000bf8777b type=write command=
+2026/07/05 14:29:32 [connector] received exec command: id=1eb85e03-093d-42f9-bfb6-a3516d17953a type=write command=
+2026/07/05 14:29:32 Received command: id=1eb85e03-093d-42f9-bfb6-a3516d17953a type=write command=
+2026/07/05 14:29:34 [connector] received exec command: id=57dc62be-4c73-4eca-944d-10022fd3256a type=write command=
+2026/07/05 14:29:34 Received command: id=57dc62be-4c73-4eca-944d-10022fd3256a type=write command=
+2026/07/05 14:29:34 [connector] received exec command: id=2fd9ef1b-67c7-45c1-92e8-59c9819b2642 type=write command=
+2026/07/05 14:29:34 Received command: id=2fd9ef1b-67c7-45c1-92e8-59c9819b2642 type=write command=
+2026/07/05 14:29:35 [connector] received exec command: id=1c631548-ebb1-4311-b17c-0b445365cd5d type=write command=
+2026/07/05 14:29:35 Received command: id=1c631548-ebb1-4311-b17c-0b445365cd5d type=write command=
+2026/07/05 14:29:36 [connector] received exec command: id=159578fd-bed4-4f87-8eda-cea65816a53f type=write command=
+2026/07/05 14:29:36 Received command: id=159578fd-bed4-4f87-8eda-cea65816a53f type=write command=
+2026/07/05 14:29:36 [connector] received exec command: id=5d5e73f0-221f-46ba-9615-8d1210355afe type=write command=
+2026/07/05 14:29:36 Received command: id=5d5e73f0-221f-46ba-9615-8d1210355afe type=write command=
+2026/07/05 14:29:37 [connector] received exec command: id=1e41eb48-eed2-43da-9121-d13c8e58ba40 type=write command=
+2026/07/05 14:29:37 Received command: id=1e41eb48-eed2-43da-9121-d13c8e58ba40 type=write command=
+2026/07/05 14:29:37 [connector] received exec command: id=c1ba7d8c-71c2-4021-a890-15daa0076abd type=write command=
+2026/07/05 14:29:37 Received command: id=c1ba7d8c-71c2-4021-a890-15daa0076abd type=write command=
+2026/07/05 14:29:37 [connector] received exec command: id=82075f89-acd2-4819-8516-7cc990c02d42 type=write command=
+2026/07/05 14:29:37 Received command: id=82075f89-acd2-4819-8516-7cc990c02d42 type=write command=
+2026/07/05 14:29:38 [connector] received exec command: id=e7a1acb9-8928-4113-87bc-be73c31c3ecb type=write command=
+2026/07/05 14:29:38 Received command: id=e7a1acb9-8928-4113-87bc-be73c31c3ecb type=write command=
+2026/07/05 14:29:38 [connector] received exec command: id=05d4b3bc-a646-4dd2-8a1c-187afe9b606f type=write command=
+2026/07/05 14:29:38 Received command: id=05d4b3bc-a646-4dd2-8a1c-187afe9b606f type=write command=
+2026/07/05 14:29:38 [connector] received exec command: id=574f735a-c17a-4eab-a507-742935d4068d type=write command=
+2026/07/05 14:29:38 Received command: id=574f735a-c17a-4eab-a507-742935d4068d type=write command=
+2026/07/05 14:29:38 [connector] received exec command: id=475998b6-7509-4347-bdf8-4a00a740c0d0 type=write command=
+2026/07/05 14:29:38 Received command: id=475998b6-7509-4347-bdf8-4a00a740c0d0 type=write command=
+2026/07/05 14:29:38 [connector] received exec command: id=2c8468cd-ec28-49c6-acff-d22848295ae1 type=write command=
+2026/07/05 14:29:38 Received command: id=2c8468cd-ec28-49c6-acff-d22848295ae1 type=write command=
+2026/07/05 14:29:39 [connector] received exec command: id=304a7ca1-4307-4a14-9f02-169a6d18ff49 type=write command=
+2026/07/05 14:29:39 Received command: id=304a7ca1-4307-4a14-9f02-169a6d18ff49 type=write command=
+2026/07/05 14:29:39 [connector] received exec command: id=9c726c2f-c565-49d6-abbd-3b5f72db7513 type=write command=
+2026/07/05 14:29:39 Received command: id=9c726c2f-c565-49d6-abbd-3b5f72db7513 type=write command=
+2026/07/05 14:29:40 [connector] received exec command: id=5c1530e9-ac2b-49b4-b539-f5ff79174409 type=write command=
+2026/07/05 14:29:40 Received command: id=5c1530e9-ac2b-49b4-b539-f5ff79174409 type=write command=
+2026/07/05 14:29:40 [connector] received exec command: id=0ced7604-7728-481a-be3c-cb31c0afe486 type=write command=
+2026/07/05 14:29:40 Received command: id=0ced7604-7728-481a-be3c-cb31c0afe486 type=write command=
+2026/07/05 14:29:41 [connector] received exec command: id=02365f5e-f05d-46c3-b0fa-84317a33d3d6 type=write command=
+2026/07/05 14:29:41 Received command: id=02365f5e-f05d-46c3-b0fa-84317a33d3d6 type=write command=
+2026/07/05 14:29:41 [connector] received exec command: id=754e4a29-34a2-41aa-bda2-f5d17879d533 type=write command=
+2026/07/05 14:29:41 Received command: id=754e4a29-34a2-41aa-bda2-f5d17879d533 type=write command=
+2026/07/05 14:29:41 [connector] received exec command: id=2faee47f-6c11-46f5-9896-a6ac74c66d7e type=write command=
+2026/07/05 14:29:41 Received command: id=2faee47f-6c11-46f5-9896-a6ac74c66d7e type=write command=
+2026/07/05 14:29:41 [connector] received exec command: id=9f0df7fa-8a77-453a-ab81-c2763c101934 type=write command=
+2026/07/05 14:29:41 Received command: id=9f0df7fa-8a77-453a-ab81-c2763c101934 type=write command=
+2026/07/05 14:29:42 [connector] received exec command: id=fe7572ef-918c-4a39-8e20-af54bcbcd989 type=write command=
+2026/07/05 14:29:42 Received command: id=fe7572ef-918c-4a39-8e20-af54bcbcd989 type=write command=
+2026/07/05 14:29:42 [connector] received exec command: id=2875962e-ea73-416c-8436-d056c57ecf7b type=write command=
+2026/07/05 14:29:42 Received command: id=2875962e-ea73-416c-8436-d056c57ecf7b type=write command=
+2026/07/05 14:29:42 [connector] received exec command: id=a0c1da1d-95fe-4e8d-a654-8e843332209c type=write command=
+2026/07/05 14:29:42 Received command: id=a0c1da1d-95fe-4e8d-a654-8e843332209c type=write command=
+2026/07/05 14:29:42 [connector] received exec command: id=8f9cbe7f-fcbf-47f5-a283-086bac5661bb type=write command=
+2026/07/05 14:29:42 Received command: id=8f9cbe7f-fcbf-47f5-a283-086bac5661bb type=write command=
+2026/07/05 14:29:42 [connector] received exec command: id=b0e77a67-518a-4b1d-a52a-e821d6e79e6a type=write command=
+2026/07/05 14:29:42 Received command: id=b0e77a67-518a-4b1d-a52a-e821d6e79e6a type=write command=
+2026/07/05 14:29:43 [connector] received exec command: id=3dbe1b03-b4d0-4ce8-90d1-d0226246a1ac type=write command=
+2026/07/05 14:29:43 Received command: id=3dbe1b03-b4d0-4ce8-90d1-d0226246a1ac type=write command=
+2026/07/05 14:29:43 [connector] received exec command: id=944ea450-25ec-47af-a3be-68a75a3622aa type=write command=
+2026/07/05 14:29:43 Received command: id=944ea450-25ec-47af-a3be-68a75a3622aa type=write command=
+2026/07/05 14:29:43 [connector] received exec command: id=ec84a578-9ac6-4603-bb07-df950cedb102 type=write command=
+2026/07/05 14:29:43 Received command: id=ec84a578-9ac6-4603-bb07-df950cedb102 type=write command=
+2026/07/05 14:29:43 [connector] received exec command: id=ef8ea84b-18e4-4364-99b2-faf720f77292 type=write command=
+2026/07/05 14:29:43 Received command: id=ef8ea84b-18e4-4364-99b2-faf720f77292 type=write command=
+2026/07/05 14:29:44 [connector] received exec command: id=1d39c002-3e39-4652-a7c5-93c18c1f2c97 type=write command=
+2026/07/05 14:29:44 Received command: id=1d39c002-3e39-4652-a7c5-93c18c1f2c97 type=write command=
+2026/07/05 14:29:44 [connector] received exec command: id=aa374cdc-919e-4119-95ce-ef0f607df576 type=write command=
+2026/07/05 14:29:44 Received command: id=aa374cdc-919e-4119-95ce-ef0f607df576 type=write command=
+2026/07/05 14:29:44 [connector] received exec command: id=11fa7a96-78f9-4eba-98da-a7f43c3304e4 type=write command=
+2026/07/05 14:29:44 Received command: id=11fa7a96-78f9-4eba-98da-a7f43c3304e4 type=write command=
+2026/07/05 14:29:44 [connector] received exec command: id=acf05d8f-a346-46a0-b611-89dad81334e0 type=write command=
+2026/07/05 14:29:44 Received command: id=acf05d8f-a346-46a0-b611-89dad81334e0 type=write command=
+2026/07/05 14:29:44 [connector] received exec command: id=a535e821-e816-4c10-b00b-43cd2a89908d type=write command=
+2026/07/05 14:29:44 Received command: id=a535e821-e816-4c10-b00b-43cd2a89908d type=write command=
+2026/07/05 14:41:45 [connector] connection error: read message: websocket: close 1006 (abnormal closure): unexpected EOF, retrying in 5s...
+2026/07/05 14:41:50 [connector] connected to center: node=2f47b31f-9285-4d60-8392-6d7c08a35584
