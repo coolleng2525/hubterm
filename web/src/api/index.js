@@ -105,3 +105,7 @@ export function startAgentSSH(nodeId, data) {
 export function deleteNode(id) {
   return api.delete(`/nodes/${id}`)
 }
+
+export function getScripts() {
+  return api.get('/scripts')
+}

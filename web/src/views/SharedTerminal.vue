@@ -30,6 +30,34 @@
         <el-button size="small" :disabled="!searchQuery" @click="findPrevious">上一个</el-button>
         <el-button size="small" :disabled="!searchQuery" @click="findNext">下一个</el-button>
       </div>
+
+      <div class="terminal-sender" style="display:flex;align-items:center;gap:8px;margin-left:15px">
+        <span class="config-label">快速发送</span>
+        <el-select
+          v-model="selectedScriptSource"
+          clearable
+          size="small"
+          placeholder="选择预设脚本/命令"
+          style="width:180px"
+          @change="handleScriptChange"
+        >
+          <el-option
+            v-for="script in scripts"
+            :key="script.script_id"
+            :label="script.name"
+            :value="script.source"
+          />
+        </el-select>
+        <el-input
+          v-model="customSendText"
+          size="small"
+          placeholder="输入要发送的命令内容"
+          style="width:200px"
+          @keyup.enter="handleQuickSend"
+        />
+        <el-button type="primary" size="small" :disabled="!customSendText" @click="handleQuickSend">发送</el-button>
+      </div>
+
       <div class="terminal-config">
         <span class="config-label">保留行数</span>
         <el-select
@@ -55,7 +83,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { SearchAddon } from 'xterm-addon-search'
 import 'xterm/css/xterm.css'
-import { getSessions } from '../api'
+import { getSessions, getScripts } from '../api'
 
 const route = useRoute()
 const terminalContainer = ref(null)
@@ -68,6 +96,12 @@ const scrollbackOptions = [1000, 5000, 10000, 50000]
 const scrollback = ref(loadScrollback())
 const connected = ref(false)
 const sessionDisplayName = ref('')
+
+// Quick Send state
+const selectedScriptSource = ref('')
+const customSendText = ref('')
+const scripts = ref([])
+
 let term
 let fitAddon
 let searchAddon
@@ -83,6 +117,40 @@ async function fetchSessionInfo() {
   } catch (error) {
     console.error('Failed to fetch session info:', error)
   }
+}
+
+async function fetchScripts() {
+  try {
+    const res = await getScripts()
+    scripts.value = res.data
+  } catch (error) {
+    console.error('Failed to fetch scripts:', error)
+  }
+}
+
+function handleScriptChange(val) {
+  if (val) {
+    customSendText.value = val
+  }
+}
+
+function sendTextToTerminal(text) {
+  const data = text + '\r'
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    send('terminal_input', {
+      node_id: route.params.nodeId,
+      session_id: route.params.sessionId,
+      data: bytesToBase64(data),
+    })
+  }
+}
+
+function handleQuickSend() {
+  if (!customSendText.value) return
+  sendTextToTerminal(customSendText.value)
+  customSendText.value = ''
+  selectedScriptSource.value = ''
+  term?.focus()
 }
 
 function loadScrollback() {
@@ -212,6 +280,7 @@ function handleKeydown(event) {
 
 onMounted(() => {
   fetchSessionInfo()
+  fetchScripts()
   term = new Terminal({
     cursorBlink: true,
     fontSize: 14,

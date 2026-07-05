@@ -94,6 +94,33 @@
       </el-form>
     </el-card>
 
+    <div class="terminal-toolbar" v-if="connected" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;border:1px solid var(--el-border-color-light);border-radius:6px;background:var(--el-fill-color-lighter)">
+      <span style="font-size: 12px; color: var(--el-text-color-secondary); white-space: nowrap;">快速发送</span>
+      <el-select
+        v-model="selectedScriptSource"
+        clearable
+        size="small"
+        placeholder="选择预设脚本/命令"
+        style="width:180px"
+        @change="handleScriptChange"
+      >
+        <el-option
+          v-for="script in scripts"
+          :key="script.script_id"
+          :label="script.name"
+          :value="script.source"
+        />
+      </el-select>
+      <el-input
+        v-model="customSendText"
+        size="small"
+        placeholder="输入要发送的命令内容"
+        style="width:200px"
+        @keyup.enter="handleQuickSend"
+      />
+      <el-button type="primary" size="small" :disabled="!customSendText" @click="handleQuickSend">发送</el-button>
+    </div>
+
     <div ref="terminalContainer" class="terminal-container"></div>
   </div>
 </template>
@@ -105,7 +132,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { ElMessage } from 'element-plus'
-import { getNode, getSSHProfiles, createSSHProfile, updateSSHProfile, deleteSSHProfile } from '../api'
+import { getNode, getSSHProfiles, createSSHProfile, updateSSHProfile, deleteSSHProfile, getScripts } from '../api'
 
 const route = useRoute()
 const terminalContainer = ref(null)
@@ -113,6 +140,41 @@ const node = ref(null)
 const connecting = ref(false)
 const connected = ref(false)
 const settingsVisible = ref(true)
+
+// Quick Send state
+const selectedScriptSource = ref('')
+const customSendText = ref('')
+const scripts = ref([])
+
+async function fetchScripts() {
+  try {
+    const res = await getScripts()
+    scripts.value = res.data
+  } catch (error) {
+    console.error('Failed to fetch scripts:', error)
+  }
+}
+
+function handleScriptChange(val) {
+  if (val) {
+    customSendText.value = val
+  }
+}
+
+function sendTextToTerminal(text) {
+  const data = text + '\r'
+  if (ws && ws.readyState === WebSocket.OPEN && connected.value) {
+    ws.send(JSON.stringify({ type: 2, content: data }))
+  }
+}
+
+function handleQuickSend() {
+  if (!customSendText.value) return
+  sendTextToTerminal(customSendText.value)
+  customSendText.value = ''
+  selectedScriptSource.value = ''
+  term?.focus()
+}
 const profiles = ref([])
 const selectedProfileId = ref(null)
 const saving = ref(false)
@@ -321,6 +383,7 @@ onMounted(async () => {
   try {
     node.value = (await getNode(route.params.nodeId)).data.node
     await loadProfiles()
+    await fetchScripts()
   } catch {
     errorMessage.value = '无法加载节点信息'
   }
