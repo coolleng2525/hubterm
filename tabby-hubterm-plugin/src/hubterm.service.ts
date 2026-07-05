@@ -8,6 +8,8 @@ import * as path from 'path'
 
 const { Client } = require('ssh2')
 
+declare let process: any
+
 interface BackgroundSession {
     session_id: string
     client: any
