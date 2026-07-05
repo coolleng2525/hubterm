@@ -4,7 +4,8 @@ tabby-hubterm-plugin/node_modules/
 tabby-hubterm-plugin/tabby-hubterm-*.tgz
 clients/hubterm-desktop/node_modules/
 clients/hubterm-desktop/dist/
-# web/dist/ is committed for release builds
+web/dist/
+tabby-hubterm-plugin/dist/
 
 # Build
 *.exe
@@ -48,5 +49,4 @@ data/
 .cursor
 /scripts/deploy-55.sh
 dist/
-!web/dist/
-!web/dist/**
+
