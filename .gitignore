@@ -46,6 +46,7 @@ config.yaml
 configs/
 data/
 .cursor
+/scripts/deploy-55.sh
 dist/
 !web/dist/
 !web/dist/**
