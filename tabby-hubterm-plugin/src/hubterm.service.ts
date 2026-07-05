@@ -473,7 +473,36 @@ export class HubTermService {
 
     private collectDiskMetrics (): { total: number, used: number } {
         try {
-            if (![os.platform?.(), process.platform, this.hostApp.platform].some(platform => ['darwin', 'linux', 'macOS', 'Linux'].includes(platform))) {
+            const platformStr = (os.platform?.() || process.platform || this.hostApp.platform || '').toLowerCase()
+            const isWin = platformStr.includes('win')
+            const isUnix = ['darwin', 'linux', 'macos'].some(p => platformStr.includes(p))
+
+            if (isWin) {
+                const systemDrive = process.env.SystemDrive || 'C:'
+                const output = childProcess.execFileSync('wmic', ['logicaldisk', 'where', `DeviceID='${systemDrive}'`, 'get', 'FreeSpace,Size', '/value'], { encoding: 'utf8', timeout: 2000 })
+                let free = 0
+                let size = 0
+                for (const line of output.split('\n')) {
+                    const parts = line.trim().split('=')
+                    if (parts.length === 2) {
+                        if (parts[0].trim() === 'FreeSpace') {
+                            free = Number(parts[1].trim())
+                        }
+                        if (parts[0].trim() === 'Size') {
+                            size = Number(parts[1].trim())
+                        }
+                    }
+                }
+                if (size > 0) {
+                    return {
+                        total: size,
+                        used: size - free,
+                    }
+                }
+                return { total: 0, used: 0 }
+            }
+
+            if (!isUnix) {
                 return { total: 0, used: 0 }
             }
             const output = childProcess.execFileSync('/bin/df', ['-Pk', '/'], { encoding: 'utf8', timeout: 2000 })
