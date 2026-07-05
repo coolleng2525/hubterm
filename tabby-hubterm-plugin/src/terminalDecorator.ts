@@ -1,40 +1,42 @@
 import { Injectable, Injector } from '@angular/core'
-import { TerminalDecorator } from 'tabby-terminal'
-import { BaseTerminalTabComponent } from 'tabby-terminal'
+import { TerminalDecorator, BaseTerminalTabComponent } from 'tabby-terminal'
+import { Subscription } from 'rxjs'
 import { HubTermService } from './hubterm.service'
 
+/** @hidden */
 @Injectable()
 export class HubTermDecorator extends TerminalDecorator {
     private hubterm: HubTermService
+    private subscriptions = new Map<BaseTerminalTabComponent, Subscription[]>()
 
-    constructor(
+    constructor (
         private injector: Injector,
     ) {
         super()
         this.hubterm = this.injector.get(HubTermService)
+        console.log('[HubTerm] decorator created')
     }
 
-    attach(tab: BaseTerminalTabComponent): void {
+    attach (tab: BaseTerminalTabComponent): void {
+        console.log('[HubTerm] decorator attaching to tab')
         this.hubterm.attachTab(tab)
 
-        // Hook terminal output: forward to HubTerm
-        if (tab.output$) {
-            tab.output$.subscribe((data: any) => {
-                const str = typeof data === 'string' ? data : String(data)
-                this.hubterm.sendTerminalData(tab, str)
-            })
-        }
+        const subscriptions: Subscription[] = []
+        subscriptions.push(tab.output$.subscribe((data: any) => {
+            this.hubterm.sendTerminalData(tab, data, 'output')
+        }))
+        subscriptions.push(tab.input$.subscribe((data: any) => {
+            this.hubterm.sendTerminalData(tab, data, 'input')
+        }))
+        this.subscriptions.set(tab, subscriptions)
 
-        // Hook terminal input: forward to HubTerm
-        if (tab.input$) {
-            tab.input$.subscribe((data: any) => {
-                const str = typeof data === 'string' ? data : String(data)
-                this.hubterm.sendTerminalData(tab, str)
-            })
-        }
+        this.hubterm.start()
     }
 
-    detach(tab: BaseTerminalTabComponent): void {
+    detach (tab: BaseTerminalTabComponent): void {
+        console.log('[HubTerm] decorator detaching from tab')
+        this.subscriptions.get(tab)?.forEach(subscription => subscription.unsubscribe())
+        this.subscriptions.delete(tab)
         this.hubterm.detachTab(tab)
     }
 }

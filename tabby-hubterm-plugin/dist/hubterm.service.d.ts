@@ -1,5 +1,6 @@
 import { Injector, NgZone } from '@angular/core';
 import { BaseTerminalTabComponent } from 'tabby-terminal';
+/** @hidden */
 export declare class HubTermService {
     private injector;
     private zone;
@@ -10,22 +11,38 @@ export declare class HubTermService {
     private nodeId;
     private attachedTabs;
     private stopping;
+    private startPromise;
+    private lastCpuSample;
     private get config();
     private get hostApp();
     constructor(injector: Injector, zone: NgZone);
     private loadNodeId;
     private generateId;
     start(): void;
+    private registerAndConnect;
+    private registerNode;
+    private postRegistration;
     stop(): void;
     attachTab(tab: BaseTerminalTabComponent): void;
     detachTab(tab: BaseTerminalTabComponent): void;
-    sendTerminalData(tab: BaseTerminalTabComponent, data: string): void;
+    sendTerminalData(tab: BaseTerminalTabComponent, value: unknown, direction: 'input' | 'output'): void;
     writeToTab(tab: BaseTerminalTabComponent, data: string): void;
     private connect;
+    private agentUrl;
+    private bytesToBase64;
+    private base64ToBytes;
     private scheduleReconnect;
-    private register;
     private startReporting;
     private sendReport;
+    private nodeReport;
     private collectSessions;
+    private sessionFromTab;
+    private cleanString;
+    private hostname;
+    private collectSystemMetrics;
+    private collectMemoryMetrics;
+    private collectCpuPercent;
+    private collectDiskMetrics;
+    private tabForSession;
     private handleCommand;
 }

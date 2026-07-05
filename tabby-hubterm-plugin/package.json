@@ -1,7 +1,7 @@
 {
   "name": "tabby-hubterm",
-  "version": "1.10.0",
-  "description": "HubTerm Agent plugin for Tabby — auto-discovery, capability reporting, remote management, terminal sharing",
+  "version": "1.1.9",
+  "description": "HubTerm Agent - automatic registration, remote management, and terminal sharing",
   "keywords": [
     "tabby-plugin"
   ],

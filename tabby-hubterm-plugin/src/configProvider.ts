@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core'
+import { Injectable } from '@angular/core'
 import { ConfigProvider } from 'tabby-core'
 
 export interface HubTermConfig {
@@ -10,12 +10,13 @@ export interface HubTermConfig {
     reportInterval: number
 }
 
+/** @hidden */
 @Injectable()
 export class HubTermConfigProvider extends ConfigProvider {
     defaults: any = {
         hubterm: {
             enabled: false,
-            centerUrl: 'ws://localhost:8080/ws',
+            centerUrl: 'ws://localhost:8080/api/ws/agent',
             nodeName: '',
             domain: '',
             token: '',

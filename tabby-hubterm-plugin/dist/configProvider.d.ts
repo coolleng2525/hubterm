@@ -7,6 +7,7 @@ export interface HubTermConfig {
     token: string;
     reportInterval: number;
 }
+/** @hidden */
 export declare class HubTermConfigProvider extends ConfigProvider {
     defaults: any;
     platformDefaults: any;

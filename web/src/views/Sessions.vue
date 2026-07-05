@@ -43,9 +43,10 @@
           {{ formatTime(row.connected_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="360" fixed="right">
         <template #default="{ row }">
           <el-button type="success" link size="small" @click="openSharedTerminal(row)">共享终端</el-button>
+          <el-button type="success" link size="small" @click="openSharedTerminalInNewTab(row)">新标签页连接</el-button>
           <el-button type="primary" link size="small" @click="handleRename(row)">重命名</el-button>
           <el-button type="primary" link size="small" @click="handleAssignMaster(row)">设为主控</el-button>
           <el-button type="danger" link size="small" @click="handleKick(row)">踢掉</el-button>
@@ -90,6 +91,11 @@ function sessionLabel(session) {
 
 function openSharedTerminal(session) {
   router.push(`/shared-terminal/${session.node_id}/${session.session_id}`)
+}
+
+function openSharedTerminalInNewTab(session) {
+  const routeData = router.resolve(`/shared-terminal/${session.node_id}/${session.session_id}`)
+  window.open(routeData.href, '_blank')
 }
 
 async function handleRename(session) {

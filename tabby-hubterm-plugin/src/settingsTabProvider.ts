@@ -1,14 +1,15 @@
-import { Injectable, Injector } from '@angular/core'
+import { Injectable } from '@angular/core'
 import { SettingsTabProvider } from 'tabby-settings'
 import { HubTermSettingsTabComponent } from './settingsTab.component'
 
+/** @hidden */
 @Injectable()
 export class HubTermSettingsTabProvider extends SettingsTabProvider {
-    constructor() {
+    constructor () {
         super()
         this.weight = 200
     }
 
-    getTitle() { return 'HubTerm' }
-    getComponent(): typeof HubTermSettingsTabComponent { return HubTermSettingsTabComponent }
+    getTitle (): string { return 'HubTerm' }
+    getComponent (): typeof HubTermSettingsTabComponent { return HubTermSettingsTabComponent }
 }

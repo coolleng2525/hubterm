@@ -3,7 +3,7 @@
     <div class="terminal-header">
       <div class="terminal-title-row">
         <el-button link @click="$router.back()">← 返回</el-button>
-        <span class="terminal-title">共享终端 · {{ route.params.sessionId }}</span>
+        <span class="terminal-title">共享终端 · {{ sessionDisplayName || route.params.sessionId }}</span>
         <el-tag :type="connected ? 'success' : 'info'" size="small">
           {{ connected ? '已连接' : '未连接' }}
         </el-tag>
@@ -55,6 +55,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { SearchAddon } from 'xterm-addon-search'
 import 'xterm/css/xterm.css'
+import { getSessions } from '../api'
 
 const route = useRoute()
 const terminalContainer = ref(null)
@@ -66,10 +67,23 @@ const defaultScrollback = 10000
 const scrollbackOptions = [1000, 5000, 10000, 50000]
 const scrollback = ref(loadScrollback())
 const connected = ref(false)
+const sessionDisplayName = ref('')
 let term
 let fitAddon
 let searchAddon
 let ws
+
+async function fetchSessionInfo() {
+  try {
+    const response = await getSessions(route.params.nodeId)
+    const currentSession = response.data.find(s => s.session_id === route.params.sessionId)
+    if (currentSession) {
+      sessionDisplayName.value = currentSession.display_name || currentSession.port_name || ''
+    }
+  } catch (error) {
+    console.error('Failed to fetch session info:', error)
+  }
+}
 
 function loadScrollback() {
   const saved = Number(localStorage.getItem(scrollbackStorageKey))
@@ -197,6 +211,7 @@ function handleKeydown(event) {
 }
 
 onMounted(() => {
+  fetchSessionInfo()
   term = new Terminal({
     cursorBlink: true,
     fontSize: 14,

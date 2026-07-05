@@ -120,7 +120,27 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 		case "terminal_data":
 			var terminalData hubtermproto.TerminalData
 			raw, err := json.Marshal(msg.Data)
-			if err != nil || json.Unmarshal(raw, &terminalData) != nil || !validTerminalData(terminalData) {
+			if err == nil {
+				_ = json.Unmarshal(raw, &terminalData)
+			}
+			// Fallback for Tabby plugin format
+			if terminalData.SessionID == "" {
+				var tabbyData struct {
+					Session struct {
+						ID string `json:"id"`
+					} `json:"session"`
+					Data string `json:"data"`
+				}
+				if json.Unmarshal(raw, &tabbyData) == nil && tabbyData.Session.ID != "" {
+					terminalData.SessionID = tabbyData.Session.ID
+					terminalData.Data = tabbyData.Data
+					terminalData.Direction = "output"
+				}
+			}
+			if terminalData.Direction == "" {
+				terminalData.Direction = "output"
+			}
+			if !validTerminalData(terminalData) {
 				agentWSLog.Warn("invalid terminal data", log.String("node_id", nodeID))
 				continue
 			}
@@ -162,6 +182,103 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 	if err := json.Unmarshal(raw, &report); err != nil {
 		agentWSLog.Warn("invalid agent report", log.String("node_id", nodeID), log.Err(err))
 		return
+	}
+
+	// Bridge protocol mismatch for Tabby plugin sessions
+	var rawReport struct {
+		NodeName string `json:"node_name"`
+		Hostname string `json:"hostname"`
+		Sessions []struct {
+			ID          string `json:"id"`
+			SessionID   string `json:"session_id"`
+			Name        string `json:"name"`
+			DisplayName string `json:"display_name"`
+			Type        string `json:"type"`
+			PortName    string `json:"port_name"`
+			User        string `json:"user"`
+			ClientIP    string `json:"client_ip"`
+			ConnectedAt int64  `json:"connected_at"`
+		} `json:"sessions"`
+	}
+	if json.Unmarshal(raw, &rawReport) == nil {
+		// node_name -> Name
+		if report.Name == "" && rawReport.NodeName != "" {
+			report.Name = rawReport.NodeName
+		}
+		// hostname fallback
+		if report.Hostname == "" && rawReport.Hostname != "" {
+			report.Hostname = rawReport.Hostname
+		}
+		convertedSessions := make([]hubtermproto.SessionInfo, 0, len(rawReport.Sessions))
+		for _, s := range rawReport.Sessions {
+			sessionID := s.SessionID
+			if sessionID == "" {
+				sessionID = s.ID
+			}
+			if sessionID == "" {
+				continue
+			}
+			displayName := s.DisplayName
+			if displayName == "" {
+				displayName = s.Name
+			}
+			sessionType := s.Type
+			if sessionType == "" {
+				sessionType = "master"
+			}
+			portName := s.PortName
+			if portName == "" {
+				portName = "Tabby"
+			}
+			user := s.User
+			if user == "" {
+				user = "tabby"
+			}
+			clientIP := s.ClientIP
+			if clientIP == "" {
+				clientIP = "tabby"
+			}
+			convertedSessions = append(convertedSessions, hubtermproto.SessionInfo{
+				SessionID:   sessionID,
+				DisplayName: displayName,
+				Type:        sessionType,
+				PortName:    portName,
+				User:        user,
+				ClientIP:    clientIP,
+				ConnectedAt: s.ConnectedAt,
+			})
+		}
+		if len(report.Sessions) == 0 && len(convertedSessions) > 0 {
+			report.Sessions = convertedSessions
+		} else {
+			for i, session := range convertedSessions {
+				if i >= len(report.Sessions) {
+					report.Sessions = append(report.Sessions, session)
+					continue
+				}
+				if report.Sessions[i].SessionID == "" {
+					report.Sessions[i].SessionID = session.SessionID
+				}
+				if report.Sessions[i].DisplayName == "" {
+					report.Sessions[i].DisplayName = session.DisplayName
+				}
+				if report.Sessions[i].Type == "" {
+					report.Sessions[i].Type = session.Type
+				}
+				if report.Sessions[i].User == "" {
+					report.Sessions[i].User = session.User
+				}
+				if report.Sessions[i].PortName == "" {
+					report.Sessions[i].PortName = session.PortName
+				}
+				if report.Sessions[i].ClientIP == "" {
+					report.Sessions[i].ClientIP = session.ClientIP
+				}
+				if report.Sessions[i].ConnectedAt == 0 {
+					report.Sessions[i].ConnectedAt = session.ConnectedAt
+				}
+			}
+		}
 	}
 	if len(report.Sessions) > 1000 {
 		agentWSLog.Warn("agent report has too many sessions", log.String("node_id", nodeID))
