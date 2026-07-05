@@ -43,6 +43,7 @@ hubterm-center.bak*
 hubterm-center.log
 hubterm-agent.local.log
 config.yaml
+configs/
 data/
 .cursor
 dist/

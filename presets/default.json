@@ -55,6 +55,12 @@
       "description": "Ping 外网 (baidu + google) 测试网络连通性",
       "language": "text",
       "source": "ping -c 3 baidu.com\nping -c 3 8.8.8.8"
+    },
+    {
+      "name": "show test",
+      "description": "show test",
+      "language": "shell",
+      "source_file": "show.sh"
     }
   ]
 }
