@@ -141,9 +141,14 @@ async function fetchSessionInfo() {
     const currentSession = response.data.find(s => s.session_id === route.params.sessionId)
     if (currentSession) {
       sessionDisplayName.value = currentSession.display_name || currentSession.port_name || ''
+      return true
     }
+    writeStatus('当前终端会话已不存在或不活跃，请重新创建终端并打开新的共享链接。', '33')
+    return false
   } catch (error) {
     console.error('Failed to fetch session info:', error)
+    writeStatus('无法加载终端会话信息，请重新登录后重试。', '31')
+    return null
   }
 }
 
@@ -296,10 +301,17 @@ function send(type, data) {
   }
 }
 
+function writeStatus(message, color = '33') {
+  term?.writeln(`\r\n\x1b[${color}m${message}\x1b[0m`)
+}
+
 function connect() {
   disconnect()
   const token = localStorage.getItem('token')
-  if (!token) return
+  if (!token) {
+    writeStatus('当前浏览器未登录，请先打开 HubTerm 登录，再重新打开此共享终端链接。', '31')
+    return
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   ws = new WebSocket(`${protocol}//${window.location.host}/api/ws`, [
     'hubterm',
@@ -339,9 +351,9 @@ function connect() {
   }
   ws.onclose = () => {
     connected.value = false
-    term.writeln('\r\n\x1b[31mDisconnected\x1b[0m')
+    writeStatus('连接已断开', '31')
   }
-  ws.onerror = () => term.writeln('\r\n\x1b[31mConnection error\x1b[0m')
+  ws.onerror = () => writeStatus('连接失败', '31')
 }
 
 function disconnect() {
@@ -399,9 +411,7 @@ function handleKeydown(event) {
   }
 }
 
-onMounted(() => {
-  fetchSessionInfo()
-  fetchScripts()
+onMounted(async () => {
   term = new Terminal({
     cursorBlink: true,
     fontSize: 14,
@@ -424,6 +434,8 @@ onMounted(() => {
   })
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
+  await fetchSessionInfo()
+  fetchScripts()
   connect()
 })
 

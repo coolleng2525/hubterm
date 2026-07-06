@@ -145,7 +145,18 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if h.ownsSession(nodeID, terminalData.SessionID) {
+				agentWSLog.Info("terminal data broadcast",
+					log.String("node_id", nodeID),
+					log.String("session_id", terminalData.SessionID),
+					log.String("direction", terminalData.Direction),
+				)
 				BroadcastTerminalData(nodeID, terminalData)
+			} else {
+				agentWSLog.Warn("terminal data dropped for unknown session",
+					log.String("node_id", nodeID),
+					log.String("session_id", terminalData.SessionID),
+					log.String("direction", terminalData.Direction),
+				)
 			}
 		default:
 			agentWSLog.Debug("unknown agent message", log.String("type", msg.Type))

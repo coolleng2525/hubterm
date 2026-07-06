@@ -2,6 +2,7 @@
 """Deploy and manage hubterm-agent on lab hosts via t2-unified-toolkit."""
 
 import argparse
+import getpass
 import os
 import shlex
 import subprocess
@@ -10,9 +11,10 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HUBTERM_ROOT = os.path.dirname(SCRIPT_DIR)
 T2_ROOT = os.path.join(HUBTERM_ROOT, ".cursor", "skills", "t2-unified-toolkit")
-DEFAULT_TARGETS = ["10.223.40.20", "10.223.40.21"]
+DEFAULT_TARGETS = ["10.223.40.20", "10.223.40.21","10.223.40.25"]
 DEFAULT_BIN = os.path.join(HUBTERM_ROOT, "dist", "hubterm-agent-linux-amd64")
 DEFAULT_DATA = "$HOME/data/hubterm-agent"
+DEFAULT_TARGET_USER = os.environ.get("USER") or os.environ.get("USERNAME") or getpass.getuser()
 
 sys.path.insert(0, T2_ROOT)
 
@@ -77,9 +79,16 @@ def upload_file_via_scp(jargs, local_path, remote_path):
             else:
                 raise RuntimeError("Target password required for SCP")
         elif index == eof_idx:
+            child.close()
             break
         elif index == timeout_idx:
+            child.close(force=True)
             raise RuntimeError("SCP connection timed out")
+
+    if child.exitstatus != 0:
+        detail = (child.before or "").strip()
+        suffix = f": {detail}" if detail else ""
+        raise RuntimeError(f"SCP failed with exit status {child.exitstatus}{suffix}")
 
     print("[+] Upload complete.")
 
@@ -182,6 +191,8 @@ def load_jargs(profile: str):
 
     jargs = JumpArgs()
     for key, value in defaults.items():
+        if key == "target_user" and value in ("lleng", "root"):
+            value = DEFAULT_TARGET_USER
         setattr(jargs, key, value)
     return jargs, selected
 
@@ -189,7 +200,7 @@ def load_jargs(profile: str):
 def prepare_jargs(profile: str):
     jargs, selected = load_jargs(profile)
     if (
-        jargs.target_user == "root"
+        jargs.target_user == DEFAULT_TARGET_USER
         and not jargs.target_pass
         and jargs.jump_user
         and jargs.jump_host == jargs.target_host
@@ -290,8 +301,13 @@ def deploy_to_target(
         f"{selected} ({jargs.target_user}@{jargs.target_host}:{remote})"
     )
     run_remote(jargs, "mkdir -p ~/bin 2>/dev/null || mkdir -p /usr/local/bin")
-    upload_file_via_scp(jargs, local_bin, remote.replace("$HOME/", "~/"))
-    run_remote(jargs, f"chmod +x {shell_path(remote)}")
+    remote_upload = remote.replace("$HOME/", "~/")
+    remote_tmp = f"{remote_upload}.new"
+    upload_file_via_scp(jargs, local_bin, remote_tmp)
+    run_remote(
+        jargs,
+        f"chmod +x {shell_path(remote + '.new')} && mv -f {shell_path(remote + '.new')} {shell_path(remote)} && chmod +x {shell_path(remote)}",
+    )
     print(f"[+] Deployed to {selected}")
     return jargs, selected, remote
 
@@ -368,12 +384,13 @@ def cmd_deploy(args) -> int:
         return rc
 
     if args.start:
-        rc = run_for_targets(
-            lambda t, **_: start_on_target(
-                t, center_url, args.remote_path, args.data_dir, args.name, args.ip
-            ),
-            args.targets,
-        )
+        def restart_after_deploy(target: str, **_: object) -> None:
+            stop_on_target(target, args.data_dir)
+            start_on_target(
+                target, center_url, args.remote_path, args.data_dir, args.name, args.ip
+            )
+
+        rc = run_for_targets(restart_after_deploy, args.targets)
         if rc != 0:
             return rc
 
