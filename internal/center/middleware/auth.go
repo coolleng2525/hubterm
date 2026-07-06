@@ -36,12 +36,19 @@ type Claims struct {
 
 // FIXED: Token expiry reduced to 1 hour, added RefreshToken
 func GenerateToken(userID uint, username, role string) (string, error) {
+	return GenerateTokenWithTTL(userID, username, role, 1*time.Hour)
+}
+
+func GenerateTokenWithTTL(userID uint, username, role string, ttl time.Duration) (string, error) {
+	if ttl <= 0 {
+		ttl = 1 * time.Hour
+	}
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

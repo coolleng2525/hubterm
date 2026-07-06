@@ -82,6 +82,42 @@ func TestDeviceServiceDiscover(t *testing.T) {
 	})
 }
 
+func TestDeviceServiceDiscoverIncludesActiveSessions(t *testing.T) {
+	db := setupDeviceTestDB(t)
+	svc := NewDeviceService(db)
+	connectedAt := time.Now()
+
+	if err := db.Create(&model.Session{
+		SessionID:   "sess-com9",
+		NodeID:      "node-20",
+		DisplayName: "com9-r770",
+		PortName:    "/dev/ttyS9",
+		User:        "admin",
+		Type:        "master",
+		ConnectedAt: connectedAt,
+	}).Error; err != nil {
+		t.Fatalf("failed to seed session: %v", err)
+	}
+
+	result := svc.Discover()
+	if len(result) != 1 {
+		t.Fatalf("expected 1 discovered session device, got %d", len(result))
+	}
+	got := result[0]
+	if got.ID != "com9-r770" {
+		t.Fatalf("expected session display name as device id, got %q", got.ID)
+	}
+	if got.Source != "session" || got.SessionID != "sess-com9" || got.NodeID != "node-20" {
+		t.Fatalf("unexpected session device metadata: %+v", got)
+	}
+	if got.Status != "online" {
+		t.Fatalf("expected online session device, got %q", got.Status)
+	}
+	if len(got.Capabilities) == 0 || got.Capabilities[0] != "terminal_input" {
+		t.Fatalf("expected terminal_input capability, got %v", got.Capabilities)
+	}
+}
+
 func TestDeviceServiceGetDevice(t *testing.T) {
 	db := setupDeviceTestDB(t)
 	svc := NewDeviceService(db)

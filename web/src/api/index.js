@@ -37,6 +37,10 @@ export function getProfile() {
   return api.get('/auth/profile')
 }
 
+export function generateMCPToken(days = 365) {
+  return api.post('/auth/mcp-token', { days })
+}
+
 export function getNodes(status) {
   const params = status ? { status } : {}
   return api.get('/nodes', { params })

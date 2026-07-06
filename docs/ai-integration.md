@@ -152,6 +152,34 @@ Below are the tool definitions in standard JSON Schema format:
     }
   },
   {
+    "name": "hubterm_get_device",
+    "description": "Get full details for a specific device using its ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "The unique ID of the target device."
+        }
+      },
+      "required": ["device_id"]
+    }
+  },
+  {
+    "name": "hubterm_get_device_capabilities",
+    "description": "Get capabilities and protocols for a specific device using its ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "The unique ID of the target device."
+        }
+      },
+      "required": ["device_id"]
+    }
+  },
+  {
     "name": "hubterm_execute_command",
     "description": "Execute a CLI command asynchronously on a specific device using its ID.",
     "parameters": {
@@ -179,16 +207,84 @@ Below are the tool definitions in standard JSON Schema format:
     "parameters": {
       "type": "object",
       "properties": {
-        "device_id": {
-          "type": "string",
-          "description": "The unique ID of the target device."
-        },
         "cmd_id": {
           "type": "string",
           "description": "The command execution ID returned from hubterm_execute_command."
         }
       },
-      "required": ["device_id", "cmd_id"]
+      "required": ["cmd_id"]
+    }
+  },
+  {
+    "name": "hubterm_send_terminal_input",
+    "description": "Send input to an online terminal session discovered from active sessions or SSH terminals.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "The discovered terminal device ID, for example 'com9-r770'."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Optional raw HubTerm session ID. Use this instead of device_id when available."
+        },
+        "input": {
+          "type": "string",
+          "description": "Text to send to the terminal."
+        },
+        "append_newline": {
+          "type": "boolean",
+          "description": "Append Enter/CR after input. Default: true."
+        }
+      },
+      "required": ["input"]
+    }
+  },
+  {
+    "name": "hubterm_get_terminal_output",
+    "description": "Fetch recent output from an online terminal session.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "The discovered terminal device ID, for example 'com9-r770'."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Optional raw HubTerm session ID."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum recent output records to return. Default: 50, max: 200."
+        },
+        "include_input": {
+          "type": "boolean",
+          "description": "Include echoed input records. Default: false."
+        }
+      }
+    }
+  },
+  {
+    "name": "hubterm_upload_and_run_script",
+    "description": "Upload a Python or shell script and execute it on one or more devices or agent nodes.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Script name." },
+        "description": { "type": "string", "description": "Optional script description." },
+        "language": { "type": "string", "description": "python or shell. Default python." },
+        "source": { "type": "string", "description": "Script source code." },
+        "params": { "type": "array", "description": "Optional script parameter definitions." },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Device IDs or node IDs."
+        },
+        "timeout": { "type": "integer", "description": "Execution timeout in seconds. Default 30." }
+      },
+      "required": ["name", "source", "targets"]
     }
   }
 ]
@@ -205,3 +301,91 @@ Below are the tool definitions in standard JSON Schema format:
 7. Tool Output: {"status": "completed", "result": {"stdout": "CPU load: 12% ...", "exit_code": 0}}
 8. Agent reports back to the user with the diagnosed CPU load and interface states.
 ```
+
+
+---
+
+## 4. MCP Server Endpoint
+
+HubTerm Center also exposes an MCP-compatible JSON-RPC endpoint for AI tools that can connect to HTTP MCP servers.
+
+* **URL:** `POST /api/mcp`
+* **Auth:** `Authorization: Bearer <operator_or_admin_token>`
+* **Transport:** HTTP JSON-RPC 2.0
+
+`hubterm_discover_devices` returns both registered online devices and active HubTerm terminal sessions. If an AP console session is named `com9-r770` in the HubTerm UI, MCP exposes it as a discoverable terminal device with `device_id: "com9-r770"` and capability `terminal_input`.
+
+Available tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `hubterm_discover_devices` | Discover online HubTerm devices. |
+| `hubterm_get_device` | Get full details for one device. |
+| `hubterm_get_device_capabilities` | Get capabilities and protocols for one device. |
+| `hubterm_execute_command` | Execute a command asynchronously on one device. |
+| `hubterm_get_command_result` | Fetch command status/output by `cmd_id`. |
+| `hubterm_send_terminal_input` | Send input to an online AP console/SSH terminal session. |
+| `hubterm_get_terminal_output` | Fetch recent output from an online AP console/SSH terminal session. |
+| `hubterm_upload_and_run_script` | Upload and execute a Python or shell script on devices or nodes. |
+
+Example initialization request:
+
+```bash
+curl -sS "$HUBTERM_CENTER_URL/api/mcp" \
+  -H "Authorization: Bearer $HUBTERM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"example","version":"0.1"}}}'
+```
+
+Example tool discovery request:
+
+```bash
+curl -sS "$HUBTERM_CENTER_URL/api/mcp" \
+  -H "Authorization: Bearer $HUBTERM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+```
+
+Example tool call:
+
+```bash
+curl -sS "$HUBTERM_CENTER_URL/api/mcp" \
+  -H "Authorization: Bearer $HUBTERM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hubterm_discover_devices","arguments":{}}}'
+```
+
+Example sending input to an online AP console session:
+
+```bash
+curl -sS "$HUBTERM_CENTER_URL/api/mcp" \
+  -H "Authorization: Bearer $HUBTERM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hubterm_send_terminal_input","arguments":{"device_id":"com9-r770","input":"show version"}}}'
+```
+
+Example reading recent output from that terminal session:
+
+```bash
+curl -sS "$HUBTERM_CENTER_URL/api/mcp" \
+  -H "Authorization: Bearer $HUBTERM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"hubterm_get_terminal_output","arguments":{"device_id":"com9-r770","limit":20}}}'
+```
+
+Client configuration example: [`docs/mcp-client-config.example.json`](mcp-client-config.example.json)
+
+```json
+{
+  "mcpServers": {
+    "HubTerm": {
+      "url": "http://<HUBTERM_CENTER_HOST>:<PORT>/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <HUBTERM_MCP_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+For clients that only support command-based MCP servers, use a small bridge/adapter command that forwards MCP JSON-RPC requests to `http://<HUBTERM_CENTER_HOST>:<PORT>/api/mcp` with the bearer token header.

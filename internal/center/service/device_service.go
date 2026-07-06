@@ -4,6 +4,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,6 +33,10 @@ type DeviceInfo struct {
 	Name         string   `json:"name"`
 	Type         string   `json:"type"`
 	IP           string   `json:"ip"`
+	NodeID       string   `json:"node_id,omitempty"`
+	PortName     string   `json:"port_name,omitempty"`
+	SessionID    string   `json:"session_id,omitempty"`
+	Source       string   `json:"source,omitempty"`
 	Status       string   `json:"status"`
 	Protocols    []string `json:"protocols"`
 	Capabilities []string `json:"capabilities"`
@@ -45,9 +52,16 @@ func (s *DeviceService) Discover() []DeviceInfo {
 	s.DB.Where("status = ?", "online").Order("last_seen desc").Find(&devices)
 
 	result := make([]DeviceInfo, 0, len(devices))
+	seen := make(map[string]bool)
 	for _, d := range devices {
-		result = append(result, s.toDeviceInfo(d))
+		info := s.toDeviceInfo(d)
+		result = append(result, info)
+		seen[info.ID] = true
 	}
+	result = append(result, s.discoverActiveSessions(seen)...)
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].LastSeen > result[j].LastSeen
+	})
 	return result
 }
 
@@ -148,6 +162,9 @@ func (s *DeviceService) toDeviceInfo(d model.Device) DeviceInfo {
 		Name:     d.Name,
 		Type:     d.Type,
 		IP:       d.IP,
+		NodeID:   d.NodeID,
+		PortName: d.PortName,
+		Source:   "device",
 		Status:   d.Status,
 		Location: d.Location,
 		LastSeen: d.LastSeen.Format(time.RFC3339),
@@ -179,6 +196,79 @@ func (s *DeviceService) toDeviceInfo(d model.Device) DeviceInfo {
 	}
 
 	return info
+}
+
+func (s *DeviceService) discoverActiveSessions(seen map[string]bool) []DeviceInfo {
+	var sessions []model.Session
+	if err := s.DB.Order("connected_at desc").Find(&sessions).Error; err != nil {
+		return nil
+	}
+
+	result := make([]DeviceInfo, 0, len(sessions))
+	for _, sess := range sessions {
+		name := strings.TrimSpace(sess.DisplayName)
+		if name == "" {
+			name = strings.TrimSpace(sess.PortName)
+		}
+		if name == "" {
+			name = sess.SessionID
+		}
+		id := sessionDeviceID(sess)
+		if id == "" {
+			id = "session-" + sess.SessionID
+		}
+		if seen[id] {
+			id = fmt.Sprintf("%s-%s", id, shortID(sess.SessionID))
+		}
+		seen[id] = true
+
+		result = append(result, DeviceInfo{
+			ID:           id,
+			Name:         name,
+			Type:         sessionDeviceType(sess),
+			NodeID:       sess.NodeID,
+			PortName:     sess.PortName,
+			SessionID:    sess.SessionID,
+			Source:       "session",
+			Status:       "online",
+			Protocols:    []string{"terminal", "console"},
+			Capabilities: []string{"terminal_input", "interactive_console"},
+			Tags:         []string{"session", sess.Type},
+			LastSeen:     sess.ConnectedAt.Format(time.RFC3339),
+		})
+	}
+	return result
+}
+
+var unsafeDeviceIDChars = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
+
+func sessionDeviceID(sess model.Session) string {
+	base := strings.TrimSpace(sess.DisplayName)
+	if base == "" {
+		base = strings.TrimSpace(sess.PortName)
+	}
+	base = unsafeDeviceIDChars.ReplaceAllString(base, "-")
+	base = strings.Trim(base, "-_.")
+	if base == "" {
+		return ""
+	}
+	return base
+}
+
+func shortID(id string) string {
+	if len(id) <= 8 {
+		return id
+	}
+	return id[:8]
+}
+
+func sessionDeviceType(sess model.Session) string {
+	portName := strings.ToLower(strings.TrimSpace(sess.PortName))
+	displayName := strings.ToLower(strings.TrimSpace(sess.DisplayName))
+	if strings.Contains(portName, ":") || strings.Contains(displayName, "ssh") {
+		return "ssh"
+	}
+	return "terminal"
 }
 
 // deriveProtocols returns the list of supported protocols for a device.

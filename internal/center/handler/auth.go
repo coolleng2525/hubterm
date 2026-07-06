@@ -220,6 +220,57 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "密码修改成功"})
 }
 
+func (h *AuthHandler) GenerateMCPToken(c *gin.Context) {
+	role, _ := c.Get("role")
+	if role != "admin" && role != "operator" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "operator required"})
+		return
+	}
+
+	userIDValue, _ := c.Get("user_id")
+	userID, _ := userIDValue.(uint)
+	usernameValue, _ := c.Get("username")
+	username, _ := usernameValue.(string)
+	roleStr, _ := role.(string)
+
+	var req struct {
+		Days int `json:"days"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.Days <= 0 {
+		req.Days = 365
+	}
+	if req.Days > 3650 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "days must be <= 3650"})
+		return
+	}
+
+	ttl := time.Duration(req.Days) * 24 * time.Hour
+	token, err := middleware.GenerateTokenWithTTL(userID, username, roleStr, ttl)
+	if err != nil {
+		authLog.Error("failed to generate mcp token", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+	expiresAt := time.Now().Add(ttl).UTC().Format(time.RFC3339)
+
+	if err := h.DB.Create(&model.AuditLog{
+		User:   username,
+		Action: "generate_mcp_token",
+		Target: username,
+		Detail: "Generated MCP token valid for " + time.Duration(ttl).String(),
+	}).Error; err != nil {
+		authLog.Warn("failed to create audit log", log.Err(err))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":      token,
+		"token_type": "Bearer",
+		"expires_at": expiresAt,
+		"days":       req.Days,
+	})
+}
+
 func (h *AuthHandler) Profile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	var user model.User

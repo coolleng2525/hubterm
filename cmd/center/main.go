@@ -97,6 +97,7 @@ func main() {
 	scriptH.LoadPresetsFromDir(cfg.Presets.Dir)
 	deviceSvc := service.NewDeviceService(model.GetDB())
 	aiH := handler.NewAIHandler(model.GetDB(), deviceSvc, agentWSH)
+	mcpH := handler.NewMCPHandler(model.GetDB(), deviceSvc, agentWSH)
 
 	// P4-P6 handlers
 	topoH := handler.NewTopologyHandler(model.GetDB())
@@ -131,6 +132,7 @@ func main() {
 	{
 		api.GET("/auth/profile", authH.Profile)
 		api.POST("/auth/refresh", authH.RefreshToken)
+		api.POST("/auth/mcp-token", middleware.OperatorRequired(), authH.GenerateMCPToken)
 		api.PUT("/auth/password", authH.ChangePassword)
 
 		api.GET("/nodes", nodeH.List)
@@ -178,6 +180,7 @@ func main() {
 			v1.GET("/devices/:id/exec/:cmd_id", aiH.GetResult)
 			v1.POST("/scripts", middleware.OperatorRequired(), aiH.UploadAndExecute)
 		}
+		api.POST("/mcp", middleware.OperatorRequired(), mcpH.Handle)
 
 		// P4 — 拓扑
 		api.GET("/topology", topoH.GetTopology)

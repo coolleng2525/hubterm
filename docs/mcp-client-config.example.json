@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "HubTerm": {
+      "url": "http://<HUBTERM_CENTER_HOST>:<PORT>/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <HUBTERM_MCP_TOKEN>"
+      }
+    }
+  }
+}

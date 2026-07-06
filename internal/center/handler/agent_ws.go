@@ -23,9 +23,10 @@ import (
 type AgentWSHandler struct {
 	DB *gorm.DB
 
-	mu            sync.RWMutex
-	agentConns    map[string]*agentConnection // nodeID -> connection
-	localSessions map[string]string           // sessionID -> nodeID
+	mu              sync.RWMutex
+	agentConns      map[string]*agentConnection // nodeID -> connection
+	localSessions   map[string]string           // sessionID -> nodeID
+	terminalBuffers map[string][]hubtermproto.TerminalData
 }
 
 // agentConnection 表示一个 agent 的 WebSocket 连接
@@ -40,9 +41,10 @@ var agentWSLog = log.New("agent_ws")
 // NewAgentWSHandler 创建 agent WebSocket 处理器
 func NewAgentWSHandler(db *gorm.DB) *AgentWSHandler {
 	return &AgentWSHandler{
-		DB:            db,
-		agentConns:    make(map[string]*agentConnection),
-		localSessions: make(map[string]string),
+		DB:              db,
+		agentConns:      make(map[string]*agentConnection),
+		localSessions:   make(map[string]string),
+		terminalBuffers: make(map[string][]hubtermproto.TerminalData),
 	}
 }
 
@@ -145,6 +147,7 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if h.ownsSession(nodeID, terminalData.SessionID) {
+				h.appendTerminalData(terminalData)
 				agentWSLog.Info("terminal data broadcast",
 					log.String("node_id", nodeID),
 					log.String("session_id", terminalData.SessionID),
@@ -162,6 +165,35 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 			agentWSLog.Debug("unknown agent message", log.String("type", msg.Type))
 		}
 	}
+}
+
+func (h *AgentWSHandler) appendTerminalData(data hubtermproto.TerminalData) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	buf := append(h.terminalBuffers[data.SessionID], data)
+	if len(buf) > 200 {
+		buf = buf[len(buf)-200:]
+	}
+	h.terminalBuffers[data.SessionID] = buf
+}
+
+func (h *AgentWSHandler) GetTerminalData(sessionID string, limit int, includeInput bool) []hubtermproto.TerminalData {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	h.mu.RLock()
+	buf := append([]hubtermproto.TerminalData(nil), h.terminalBuffers[sessionID]...)
+	h.mu.RUnlock()
+	filtered := make([]hubtermproto.TerminalData, 0, len(buf))
+	for _, item := range buf {
+		if includeInput || item.Direction == "output" {
+			filtered = append(filtered, item)
+		}
+	}
+	if len(filtered) > limit {
+		filtered = filtered[len(filtered)-limit:]
+	}
+	return filtered
 }
 
 func agentToken(r *http.Request) string {
