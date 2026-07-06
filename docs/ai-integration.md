@@ -313,7 +313,7 @@ HubTerm Center also exposes an MCP-compatible JSON-RPC endpoint for AI tools tha
 * **Auth:** `Authorization: Bearer <operator_or_admin_token>`
 * **Transport:** HTTP JSON-RPC 2.0
 
-`hubterm_discover_devices` returns both registered online devices and active HubTerm terminal sessions. If an AP console session is named `com9-r770` in the HubTerm UI, MCP exposes it as a discoverable terminal device with `device_id: "com9-r770"` and capability `terminal_input`.
+`hubterm_discover_devices` returns both registered online devices and active HubTerm terminal sessions. If an AP console session is named `com9-r770` in the HubTerm UI, MCP exposes it as a discoverable terminal device with `device_id: "com9-r770"` and capability `terminal_input`. `hubterm_execute_command` accepts that same `device_id`; for terminal-session devices it sends the command into the live terminal and `hubterm_get_command_result` returns the recent terminal output as `stdout`.
 
 Available tools:
 
@@ -322,7 +322,7 @@ Available tools:
 | `hubterm_discover_devices` | Discover online HubTerm devices. |
 | `hubterm_get_device` | Get full details for one device. |
 | `hubterm_get_device_capabilities` | Get capabilities and protocols for one device. |
-| `hubterm_execute_command` | Execute a command asynchronously on one device. |
+| `hubterm_execute_command` | Execute a command asynchronously on a registered device, or send command text to a discovered online terminal session such as `com9-r770`. |
 | `hubterm_get_command_result` | Fetch command status/output by `cmd_id`. |
 | `hubterm_send_terminal_input` | Send input to an online AP console/SSH terminal session. |
 | `hubterm_get_terminal_output` | Fetch recent output from an online AP console/SSH terminal session. |

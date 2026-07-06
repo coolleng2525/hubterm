@@ -2,11 +2,14 @@
 package handler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -27,6 +30,18 @@ type MCPHandler struct {
 	DeviceSvc    *service.DeviceService
 	AgentWS      *AgentWSHandler
 	ScriptEngine *script.Engine
+
+	terminalExecMu sync.RWMutex
+	terminalExecs  map[string]terminalExec
+}
+
+type terminalExec struct {
+	CmdID     string
+	DeviceID  string
+	SessionID string
+	NodeID    string
+	Command   string
+	CreatedAt time.Time
 }
 
 type mcpRequest struct {
@@ -49,7 +64,7 @@ type mcpError struct {
 }
 
 func NewMCPHandler(db *gorm.DB, deviceSvc *service.DeviceService, agentWS *AgentWSHandler) *MCPHandler {
-	return &MCPHandler{DB: db, DeviceSvc: deviceSvc, AgentWS: agentWS, ScriptEngine: script.NewEngine()}
+	return &MCPHandler{DB: db, DeviceSvc: deviceSvc, AgentWS: agentWS, ScriptEngine: script.NewEngine(), terminalExecs: make(map[string]terminalExec)}
 }
 
 func (h *MCPHandler) Handle(c *gin.Context) {
@@ -193,16 +208,24 @@ func (h *MCPHandler) toolExecuteCommand(c *gin.Context, raw json.RawMessage) (in
 	cmdID, err := h.DeviceSvc.Execute(args.DeviceID, args.Command, args.Timeout, func(nodeID, command string, timeout int) (string, error) {
 		return h.AgentWS.SendExecCommand(nodeID, command, timeout)
 	})
+	mode := "exec"
 	if err != nil {
-		return nil, err
+		if !strings.Contains(err.Error(), "device not found") {
+			return nil, err
+		}
+		cmdID, err = h.sendTerminalCommand(args.DeviceID, "", args.Command)
+		if err != nil {
+			return nil, err
+		}
+		mode = "terminal"
 	}
 
 	username, _ := c.Get("username")
 	usernameStr, _ := username.(string)
-	if err := h.DB.Create(&model.AuditLog{User: usernameStr, Action: "mcp_exec", Target: args.DeviceID, Detail: fmt.Sprintf("command: %s, cmd_id: %s", args.Command, cmdID)}).Error; err != nil {
+	if err := h.DB.Create(&model.AuditLog{User: usernameStr, Action: "mcp_exec", Target: args.DeviceID, Detail: fmt.Sprintf("mode: %s, command: %s, cmd_id: %s", mode, args.Command, cmdID)}).Error; err != nil {
 		mcpLog.Warn("failed to create audit log", log.Err(err))
 	}
-	return gin.H{"cmd_id": cmdID, "status": "pending"}, nil
+	return gin.H{"cmd_id": cmdID, "status": "pending", "mode": mode}, nil
 }
 
 func (h *MCPHandler) toolSendTerminalInput(c *gin.Context, raw json.RawMessage) (interface{}, error) {
@@ -235,7 +258,8 @@ func (h *MCPHandler) toolSendTerminalInput(c *gin.Context, raw json.RawMessage) 
 	if args.AppendNewline == nil || *args.AppendNewline {
 		data += "\r"
 	}
-	if err := h.AgentWS.SendTerminalInput(sess.NodeID, sess.SessionID, data); err != nil {
+	encodedData := encodeTerminalInput(data)
+	if err := h.AgentWS.SendTerminalInput(sess.NodeID, sess.SessionID, encodedData); err != nil {
 		return nil, err
 	}
 
@@ -245,6 +269,26 @@ func (h *MCPHandler) toolSendTerminalInput(c *gin.Context, raw json.RawMessage) 
 		mcpLog.Warn("failed to create audit log", log.Err(err))
 	}
 	return gin.H{"status": "sent", "device_id": args.DeviceID, "session_id": sess.SessionID, "node_id": sess.NodeID}, nil
+}
+
+func (h *MCPHandler) sendTerminalCommand(deviceID, sessionID, command string) (string, error) {
+	sess, err := h.resolveTerminalSession(deviceID, sessionID)
+	if err != nil {
+		return "", err
+	}
+	data := encodeTerminalInput(command + "\r")
+	if err := h.AgentWS.SendTerminalInput(sess.NodeID, sess.SessionID, data); err != nil {
+		return "", err
+	}
+	cmdID := uuid.New().String()
+	h.terminalExecMu.Lock()
+	h.terminalExecs[cmdID] = terminalExec{CmdID: cmdID, DeviceID: deviceID, SessionID: sess.SessionID, NodeID: sess.NodeID, Command: command, CreatedAt: time.Now()}
+	h.terminalExecMu.Unlock()
+	return cmdID, nil
+}
+
+func encodeTerminalInput(data string) string {
+	return base64.StdEncoding.EncodeToString([]byte(data))
 }
 
 func (h *MCPHandler) resolveTerminalSession(deviceID, sessionID string) (*model.Session, error) {
@@ -323,6 +367,9 @@ func (h *MCPHandler) toolGetCommandResult(raw json.RawMessage) (interface{}, err
 	}
 	entry := GetExecResult(args.CmdID)
 	if entry == nil {
+		if result, ok := h.getTerminalCommandResult(args.CmdID); ok {
+			return result, nil
+		}
 		return gin.H{"status": "not_found"}, nil
 	}
 	resp := gin.H{"status": entry.Status}
@@ -330,6 +377,37 @@ func (h *MCPHandler) toolGetCommandResult(raw json.RawMessage) (interface{}, err
 		resp["result"] = entry.Result
 	}
 	return resp, nil
+}
+
+func (h *MCPHandler) getTerminalCommandResult(cmdID string) (gin.H, bool) {
+	h.terminalExecMu.RLock()
+	exec, ok := h.terminalExecs[cmdID]
+	h.terminalExecMu.RUnlock()
+	if !ok || h.AgentWS == nil {
+		return nil, false
+	}
+	items := h.AgentWS.GetTerminalData(exec.SessionID, 50, false)
+	var stdout strings.Builder
+	for _, item := range items {
+		decoded, err := base64.StdEncoding.DecodeString(item.Data)
+		if err != nil {
+			continue
+		}
+		stdout.Write(decoded)
+	}
+	return gin.H{
+		"status": "completed",
+		"mode":   "terminal",
+		"result": gin.H{
+			"cmd_id":      exec.CmdID,
+			"stdout":      stdout.String(),
+			"stderr":      "",
+			"exit_code":   0,
+			"duration_ms": time.Since(exec.CreatedAt).Milliseconds(),
+			"session_id":  exec.SessionID,
+			"node_id":     exec.NodeID,
+		},
+	}, true
 }
 
 func (h *MCPHandler) toolUploadAndRunScript(c *gin.Context, raw json.RawMessage) (interface{}, error) {
