@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coolleng2525/hubterm/internal/center/middleware"
+	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,6 +102,62 @@ func TestLoginFail(t *testing.T) {
 			t.Errorf("expected 400, got %d", w.Code)
 		}
 	})
+}
+
+func TestGenerateMCPTokenPersistsTokenHash(t *testing.T) {
+	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	db := setupTestDB(t)
+	userID := seedUser(t, db, "mcpuser", "correctpassword", "operator")
+	handler := &AuthHandler{DB: db}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/api/auth/mcp-token", strings.NewReader(`{"days":365}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("user_id", userID)
+	c.Set("username", "mcpuser")
+	c.Set("role", "operator")
+
+	handler.GenerateMCPToken(c)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	token, _ := resp["token"].(string)
+	if token == "" {
+		t.Fatal("expected token in response")
+	}
+	if resp["token_id"] == nil {
+		t.Fatal("expected token_id in response")
+	}
+
+	claims, err := middleware.ParseToken(token)
+	if err != nil {
+		t.Fatalf("failed to parse token: %v", err)
+	}
+	if claims.TokenType != "mcp" {
+		t.Fatalf("expected token_type=mcp, got %q", claims.TokenType)
+	}
+
+	var saved model.MCPToken
+	if err := db.Where("token_hash = ?", middleware.TokenHash(token)).First(&saved).Error; err != nil {
+		t.Fatalf("expected mcp token hash saved: %v", err)
+	}
+	if saved.TokenHash == token {
+		t.Fatal("token plaintext must not be stored in database")
+	}
+	if saved.UserID != userID || saved.Username != "mcpuser" || saved.Role != "operator" {
+		t.Fatalf("unexpected saved token metadata: %+v", saved)
+	}
+	if time.Until(saved.ExpiresAt) < 360*24*time.Hour {
+		t.Fatalf("expected long-lived expiry, got %s", saved.ExpiresAt)
+	}
 }
 
 func TestLoginRateLimit(t *testing.T) {

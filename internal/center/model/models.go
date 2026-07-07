@@ -33,6 +33,20 @@ type SSHProfile struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
+// MCPToken stores long-lived MCP bearer tokens by hash. The plaintext token is only returned once.
+type MCPToken struct {
+	ID         uint       `gorm:"primaryKey" json:"id"`
+	TokenHash  string     `gorm:"uniqueIndex;size:64;not null" json:"-"`
+	UserID     uint       `gorm:"index;not null" json:"user_id"`
+	Username   string     `gorm:"size:64;not null" json:"username"`
+	Role       string     `gorm:"size:32;not null" json:"role"`
+	ExpiresAt  time.Time  `gorm:"index;not null" json:"expires_at"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Revoked    bool       `gorm:"not null;default:false" json:"revoked"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
 // Node 节点
 type Node struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
@@ -150,7 +164,7 @@ type BatchResult struct {
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&User{}, &SSHProfile{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
+		&User{}, &SSHProfile{}, &MCPToken{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
 		&Script{}, &ScriptResult{}, &Device{},
 		&DeviceAlias{}, &RemoteCenter{}, &DeviceGroup{}, &DeviceGroupMember{}, &BatchResult{},
 	)

@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -8,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -28,9 +32,10 @@ func getJWTSecret() []byte {
 }
 
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID    uint   `json:"user_id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	TokenType string `json:"token_type,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -40,13 +45,22 @@ func GenerateToken(userID uint, username, role string) (string, error) {
 }
 
 func GenerateTokenWithTTL(userID uint, username, role string, ttl time.Duration) (string, error) {
+	return generateTokenWithTTL(userID, username, role, "", ttl)
+}
+
+func GenerateMCPTokenWithTTL(userID uint, username, role string, ttl time.Duration) (string, error) {
+	return generateTokenWithTTL(userID, username, role, "mcp", ttl)
+}
+
+func generateTokenWithTTL(userID uint, username, role, tokenType string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {
 		ttl = 1 * time.Hour
 	}
 	claims := Claims{
-		UserID:   userID,
-		Username: username,
-		Role:     role,
+		UserID:    userID,
+		Username:  username,
+		Role:      role,
+		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -54,6 +68,11 @@ func GenerateTokenWithTTL(userID uint, username, role string, ttl time.Duration)
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(getJWTSecret())
+}
+
+func TokenHash(tokenStr string) string {
+	sum := sha256.Sum256([]byte(tokenStr))
+	return hex.EncodeToString(sum[:])
 }
 
 // RefreshToken generates a new token with extended expiry.
@@ -78,6 +97,30 @@ func ParseToken(tokenStr string) (*Claims, error) {
 	return nil, jwt.ErrSignatureInvalid
 }
 
+func ValidateMCPToken(tokenStr string, claims *Claims) error {
+	if claims == nil || claims.TokenType != "mcp" {
+		return nil
+	}
+	db := model.GetDB()
+	if db == nil {
+		return fmt.Errorf("mcp token store unavailable")
+	}
+
+	var token model.MCPToken
+	if err := db.Where("token_hash = ?", TokenHash(tokenStr)).First(&token).Error; err != nil {
+		return fmt.Errorf("mcp token not found")
+	}
+	if token.Revoked {
+		return fmt.Errorf("mcp token revoked")
+	}
+	if time.Now().After(token.ExpiresAt) {
+		return fmt.Errorf("mcp token expired")
+	}
+	now := time.Now().UTC()
+	_ = db.Model(&token).Update("last_used_at", &now).Error
+	return nil
+}
+
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
@@ -88,6 +131,10 @@ func AuthRequired() gin.HandlerFunc {
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 		claims, err := ParseToken(tokenStr)
 		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+		if err := ValidateMCPToken(tokenStr, claims); err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}

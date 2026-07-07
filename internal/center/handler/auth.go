@@ -246,13 +246,27 @@ func (h *AuthHandler) GenerateMCPToken(c *gin.Context) {
 	}
 
 	ttl := time.Duration(req.Days) * 24 * time.Hour
-	token, err := middleware.GenerateTokenWithTTL(userID, username, roleStr, ttl)
+	expiresAtTime := time.Now().Add(ttl).UTC()
+	token, err := middleware.GenerateMCPTokenWithTTL(userID, username, roleStr, ttl)
 	if err != nil {
 		authLog.Error("failed to generate mcp token", log.Err(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
-	expiresAt := time.Now().Add(ttl).UTC().Format(time.RFC3339)
+
+	tokenModel := model.MCPToken{
+		TokenHash: middleware.TokenHash(token),
+		UserID:    userID,
+		Username:  username,
+		Role:      roleStr,
+		ExpiresAt: expiresAtTime,
+	}
+	if err := h.DB.Create(&tokenModel).Error; err != nil {
+		authLog.Error("failed to save mcp token", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save token"})
+		return
+	}
+	expiresAt := expiresAtTime.Format(time.RFC3339)
 
 	if err := h.DB.Create(&model.AuditLog{
 		User:   username,
@@ -268,6 +282,7 @@ func (h *AuthHandler) GenerateMCPToken(c *gin.Context) {
 		"token_type": "Bearer",
 		"expires_at": expiresAt,
 		"days":       req.Days,
+		"token_id":   tokenModel.ID,
 	})
 }
 

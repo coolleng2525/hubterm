@@ -7,8 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func TestMain(m *testing.M) {
@@ -123,6 +127,75 @@ func TestRefreshToken(t *testing.T) {
 			t.Error("expected error for invalid token, got nil")
 		}
 	})
+}
+
+func setupMiddlewareAuthDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	if err := model.AutoMigrate(db); err != nil {
+		t.Fatalf("failed to migrate db: %v", err)
+	}
+	model.DB = db
+	return db
+}
+
+func TestMCPTokenRequiresPersistedRecord(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupMiddlewareAuthDB(t)
+
+	token, err := GenerateMCPTokenWithTTL(7, "mcpuser", "operator", time.Hour)
+	if err != nil {
+		t.Fatalf("GenerateMCPTokenWithTTL failed: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+	AuthRequired()(c)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected unpersisted mcp token to be rejected, got %d", w.Code)
+	}
+
+	expiresAt := time.Now().Add(time.Hour)
+	if err := db.Create(&model.MCPToken{TokenHash: TokenHash(token), UserID: 7, Username: "mcpuser", Role: "operator", ExpiresAt: expiresAt}).Error; err != nil {
+		t.Fatalf("failed to persist mcp token: %v", err)
+	}
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+	AuthRequired()(c)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected persisted mcp token to pass, got %d: %s", w.Code, w.Body.String())
+	}
+	if role, _ := c.Get("role"); role != "operator" {
+		t.Fatalf("expected role=operator, got %v", role)
+	}
+
+	var saved model.MCPToken
+	if err := db.Where("token_hash = ?", TokenHash(token)).First(&saved).Error; err != nil {
+		t.Fatalf("failed to reload mcp token: %v", err)
+	}
+	if saved.LastUsedAt == nil {
+		t.Fatal("expected last_used_at to be updated")
+	}
+
+	if err := db.Model(&saved).Update("revoked", true).Error; err != nil {
+		t.Fatalf("failed to revoke token: %v", err)
+	}
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+	AuthRequired()(c)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected revoked mcp token to be rejected, got %d", w.Code)
+	}
 }
 
 func TestAuthMiddleware(t *testing.T) {
