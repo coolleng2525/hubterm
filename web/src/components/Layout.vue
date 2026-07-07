@@ -63,6 +63,40 @@
             <div class="mcp-meta">过期时间：{{ mcpExpiresAt }}</div>
             <el-input v-model="mcpConfig" type="textarea" :rows="9" readonly />
           </div>
+          <div class="mcp-token-list">
+            <div class="mcp-list-head">
+              <span class="mcp-label">数据库 Token</span>
+              <el-button size="small" :loading="loadingMCPTokens" @click="loadMCPTokens">刷新</el-button>
+            </div>
+            <el-table :data="mcpTokens" size="small" max-height="260" empty-text="暂无 MCP Token">
+              <el-table-column prop="id" label="ID" width="70" />
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag size="small" :type="tokenStatusType(row.status)">{{ tokenStatusText(row.status) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="过期时间" min-width="160">
+                <template #default="{ row }">{{ formatTime(row.expires_at) }}</template>
+              </el-table-column>
+              <el-table-column label="最后使用" min-width="160">
+                <template #default="{ row }">{{ formatTime(row.last_used_at) || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="创建时间" min-width="160">
+                <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="90" fixed="right">
+                <template #default="{ row }">
+                  <el-button
+                    size="small"
+                    type="danger"
+                    link
+                    :disabled="row.status !== 'active'"
+                    @click="handleRevokeMCPToken(row)"
+                  >撤销</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </div>
       </el-dialog>
     </el-container>
@@ -72,8 +106,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { generateMCPToken } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { generateMCPToken, listMCPTokens, revokeMCPToken } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,6 +117,8 @@ const mcpDays = ref(365)
 const mcpToken = ref('')
 const mcpExpiresAt = ref('')
 const generatingToken = ref(false)
+const loadingMCPTokens = ref(false)
+const mcpTokens = ref([])
 
 const mcpConfig = computed(() => JSON.stringify({
   mcpServers: {
@@ -98,6 +134,7 @@ const mcpConfig = computed(() => JSON.stringify({
 function handleCommand(cmd) {
   if (cmd === 'mcp-token') {
     mcpDialogVisible.value = true
+    loadMCPTokens()
     return
   }
   if (cmd === 'logout') {
@@ -114,11 +151,62 @@ async function handleGenerateMCPToken() {
     mcpToken.value = res.data.token
     mcpExpiresAt.value = res.data.expires_at
     ElMessage.success('MCP Token 已生成')
+    loadMCPTokens()
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '生成 MCP Token 失败')
   } finally {
     generatingToken.value = false
   }
+}
+
+
+async function loadMCPTokens() {
+  loadingMCPTokens.value = true
+  try {
+    const res = await listMCPTokens()
+    mcpTokens.value = res.data.tokens || []
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '加载 MCP Token 失败')
+  } finally {
+    loadingMCPTokens.value = false
+  }
+}
+
+async function handleRevokeMCPToken(row) {
+  try {
+    await ElMessageBox.confirm(`确认撤销 MCP Token #${row.id}？撤销后相关客户端会立即失效。`, '撤销 Token', {
+      type: 'warning',
+      confirmButtonText: '撤销',
+      cancelButtonText: '取消',
+    })
+    await revokeMCPToken(row.id)
+    ElMessage.success('MCP Token 已撤销')
+    loadMCPTokens()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error.response?.data?.error || '撤销 MCP Token 失败')
+  }
+}
+
+function tokenStatusType(status) {
+  if (status === 'active') return 'success'
+  if (status === 'expired') return 'warning'
+  if (status === 'revoked') return 'info'
+  return 'info'
+}
+
+function tokenStatusText(status) {
+  if (status === 'active') return '有效'
+  if (status === 'expired') return '已过期'
+  if (status === 'revoked') return '已撤销'
+  return status || '-'
+}
+
+function formatTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
 }
 
 async function copyText(text) {
@@ -139,7 +227,8 @@ async function copyText(text) {
   gap: 14px;
 }
 .mcp-row,
-.mcp-actions {
+.mcp-actions,
+.mcp-list-head {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -152,9 +241,13 @@ async function copyText(text) {
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
-.mcp-result {
+.mcp-result,
+.mcp-token-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.mcp-list-head {
+  justify-content: space-between;
 }
 </style>

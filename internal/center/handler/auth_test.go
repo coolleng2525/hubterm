@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -157,6 +158,70 @@ func TestGenerateMCPTokenPersistsTokenHash(t *testing.T) {
 	}
 	if time.Until(saved.ExpiresAt) < 360*24*time.Hour {
 		t.Fatalf("expected long-lived expiry, got %s", saved.ExpiresAt)
+	}
+}
+
+func TestListAndRevokeMCPTokens(t *testing.T) {
+	os.Setenv("JWT_SECRET", "test-secret-key-for-testing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	db := setupTestDB(t)
+	userID := seedUser(t, db, "mcpuser", "correctpassword", "operator")
+	handler := &AuthHandler{DB: db}
+
+	active := model.MCPToken{TokenHash: "hash-active", UserID: userID, Username: "mcpuser", Role: "operator", ExpiresAt: time.Now().Add(time.Hour)}
+	expired := model.MCPToken{TokenHash: "hash-expired", UserID: userID, Username: "mcpuser", Role: "operator", ExpiresAt: time.Now().Add(-time.Hour)}
+	other := model.MCPToken{TokenHash: "hash-other", UserID: userID + 1, Username: "other", Role: "operator", ExpiresAt: time.Now().Add(time.Hour)}
+	if err := db.Create(&active).Error; err != nil {
+		t.Fatalf("failed to create active token: %v", err)
+	}
+	if err := db.Create(&expired).Error; err != nil {
+		t.Fatalf("failed to create expired token: %v", err)
+	}
+	if err := db.Create(&other).Error; err != nil {
+		t.Fatalf("failed to create other token: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/api/auth/mcp-tokens", nil)
+	c.Set("user_id", userID)
+	c.Set("username", "mcpuser")
+	c.Set("role", "operator")
+	handler.ListMCPTokens(c)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var listResp struct {
+		Tokens []struct {
+			ID     uint   `json:"id"`
+			Status string `json:"status"`
+		} `json:"tokens"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("failed to parse list response: %v", err)
+	}
+	if len(listResp.Tokens) != 2 {
+		t.Fatalf("expected only current user's 2 tokens, got %d", len(listResp.Tokens))
+	}
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/api/auth/mcp-tokens/revoke", nil)
+	c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", active.ID)}}
+	c.Set("user_id", userID)
+	c.Set("username", "mcpuser")
+	c.Set("role", "operator")
+	handler.RevokeMCPToken(c)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 revoke, got %d: %s", w.Code, w.Body.String())
+	}
+	var revoked model.MCPToken
+	if err := db.First(&revoked, active.ID).Error; err != nil {
+		t.Fatalf("failed to reload revoked token: %v", err)
+	}
+	if !revoked.Revoked {
+		t.Fatal("expected token revoked")
 	}
 }
 

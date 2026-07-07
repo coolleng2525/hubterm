@@ -198,6 +198,40 @@ func TestMCPTokenRequiresPersistedRecord(t *testing.T) {
 	}
 }
 
+func TestPersistedLegacyTokenCanBeRevoked(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupMiddlewareAuthDB(t)
+
+	token, err := GenerateTokenWithTTL(1, "admin", "admin", time.Hour)
+	if err != nil {
+		t.Fatalf("GenerateTokenWithTTL failed: %v", err)
+	}
+	if err := db.Create(&model.MCPToken{TokenHash: TokenHash(token), UserID: 1, Username: "admin", Role: "admin", ExpiresAt: time.Now().Add(time.Hour)}).Error; err != nil {
+		t.Fatalf("failed to persist legacy token: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+	AuthRequired()(c)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected persisted legacy token to pass, got %d", w.Code)
+	}
+
+	if err := db.Model(&model.MCPToken{}).Where("token_hash = ?", TokenHash(token)).Update("revoked", true).Error; err != nil {
+		t.Fatalf("failed to revoke legacy token: %v", err)
+	}
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+	AuthRequired()(c)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected revoked persisted legacy token to be rejected, got %d", w.Code)
+	}
+}
+
 func TestAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

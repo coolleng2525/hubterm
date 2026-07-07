@@ -133,6 +133,8 @@ func main() {
 		api.GET("/auth/profile", authH.Profile)
 		api.POST("/auth/refresh", authH.RefreshToken)
 		api.POST("/auth/mcp-token", middleware.OperatorRequired(), authH.GenerateMCPToken)
+		api.GET("/auth/mcp-tokens", middleware.OperatorRequired(), authH.ListMCPTokens)
+		api.POST("/auth/mcp-tokens/:id/revoke", middleware.OperatorRequired(), authH.RevokeMCPToken)
 		api.PUT("/auth/password", authH.ChangePassword)
 
 		api.GET("/nodes", nodeH.List)

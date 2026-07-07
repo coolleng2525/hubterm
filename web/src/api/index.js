@@ -41,6 +41,14 @@ export function generateMCPToken(days = 365) {
   return api.post('/auth/mcp-token', { days })
 }
 
+export function listMCPTokens() {
+  return api.get('/auth/mcp-tokens')
+}
+
+export function revokeMCPToken(id) {
+  return api.post(`/auth/mcp-tokens/${id}/revoke`)
+}
+
 export function getNodes(status) {
   const params = status ? { status } : {}
   return api.get('/nodes', { params })

@@ -98,17 +98,24 @@ func ParseToken(tokenStr string) (*Claims, error) {
 }
 
 func ValidateMCPToken(tokenStr string, claims *Claims) error {
-	if claims == nil || claims.TokenType != "mcp" {
+	if claims == nil {
 		return nil
 	}
 	db := model.GetDB()
 	if db == nil {
-		return fmt.Errorf("mcp token store unavailable")
+		if claims.TokenType == "mcp" {
+			return fmt.Errorf("mcp token store unavailable")
+		}
+		return nil
 	}
 
 	var token model.MCPToken
-	if err := db.Where("token_hash = ?", TokenHash(tokenStr)).First(&token).Error; err != nil {
-		return fmt.Errorf("mcp token not found")
+	err := db.Where("token_hash = ?", TokenHash(tokenStr)).First(&token).Error
+	if err != nil {
+		if claims.TokenType == "mcp" {
+			return fmt.Errorf("mcp token not found")
+		}
+		return nil
 	}
 	if token.Revoked {
 		return fmt.Errorf("mcp token revoked")

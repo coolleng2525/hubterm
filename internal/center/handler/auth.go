@@ -286,6 +286,83 @@ func (h *AuthHandler) GenerateMCPToken(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) ListMCPTokens(c *gin.Context) {
+	role, _ := c.Get("role")
+	if role != "admin" && role != "operator" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "operator required"})
+		return
+	}
+	userIDValue, _ := c.Get("user_id")
+	userID, _ := userIDValue.(uint)
+
+	var tokens []model.MCPToken
+	if err := h.DB.Where("user_id = ?", userID).Order("created_at desc").Find(&tokens).Error; err != nil {
+		authLog.Error("failed to list mcp tokens", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tokens"})
+		return
+	}
+
+	now := time.Now()
+	items := make([]gin.H, 0, len(tokens))
+	for _, token := range tokens {
+		status := "active"
+		if token.Revoked {
+			status = "revoked"
+		} else if now.After(token.ExpiresAt) {
+			status = "expired"
+		}
+		items = append(items, gin.H{
+			"id":           token.ID,
+			"username":     token.Username,
+			"role":         token.Role,
+			"status":       status,
+			"revoked":      token.Revoked,
+			"expires_at":   token.ExpiresAt.UTC().Format(time.RFC3339),
+			"last_used_at": formatOptionalTime(token.LastUsedAt),
+			"created_at":   token.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"tokens": items})
+}
+
+func (h *AuthHandler) RevokeMCPToken(c *gin.Context) {
+	role, _ := c.Get("role")
+	if role != "admin" && role != "operator" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "operator required"})
+		return
+	}
+	userIDValue, _ := c.Get("user_id")
+	userID, _ := userIDValue.(uint)
+	usernameValue, _ := c.Get("username")
+	username, _ := usernameValue.(string)
+
+	var token model.MCPToken
+	if err := h.DB.Where("id = ? AND user_id = ?", c.Param("id"), userID).First(&token).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "token not found"})
+		return
+	}
+	if token.Revoked {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+		return
+	}
+	if err := h.DB.Model(&token).Update("revoked", true).Error; err != nil {
+		authLog.Error("failed to revoke mcp token", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke token"})
+		return
+	}
+	if err := h.DB.Create(&model.AuditLog{User: username, Action: "revoke_mcp_token", Target: c.Param("id"), Detail: "Revoked MCP token"}).Error; err != nil {
+		authLog.Warn("failed to create audit log", log.Err(err))
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func formatOptionalTime(t *time.Time) interface{} {
+	if t == nil {
+		return nil
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
 func (h *AuthHandler) Profile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	var user model.User
