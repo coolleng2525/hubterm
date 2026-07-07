@@ -212,11 +212,35 @@ function formatTime(value) {
 async function copyText(text) {
   if (!text) return
   try {
-    await navigator.clipboard.writeText(text)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      fallbackCopyText(text)
+    }
     ElMessage.success('已复制')
   } catch {
-    ElMessage.error('复制失败')
+    try {
+      fallbackCopyText(text)
+      ElMessage.success('已复制')
+    } catch {
+      ElMessage.error('复制失败，请手动选择文本复制')
+    }
   }
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  textarea.style.top = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!ok) throw new Error('copy failed')
 }
 </script>
 
