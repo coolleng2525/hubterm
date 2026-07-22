@@ -53,6 +53,7 @@ type Node struct {
 	NodeID        string    `gorm:"uniqueIndex;size:64;not null" json:"node_id"`
 	Source        string    `gorm:"size:32;not null;default:agent" json:"source"`
 	Name          string    `gorm:"size:128" json:"name"`
+	ReportedName  string    `gorm:"size:128" json:"reported_name,omitempty"`
 	IP            string    `gorm:"size:64" json:"ip"`
 	Hostname      string    `gorm:"size:128" json:"hostname"`
 	OS            string    `gorm:"size:64" json:"os"`
@@ -84,6 +85,17 @@ type SerialPort struct {
 	CurrentSessionID string    `gorm:"size:64" json:"current_session_id"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// SessionDisplayName stores operator-defined session labels by stable session identity.
+type SessionDisplayName struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	NodeID      string    `gorm:"size:64;not null;uniqueIndex:idx_session_display_identity" json:"node_id"`
+	PortName    string    `gorm:"size:128;not null;uniqueIndex:idx_session_display_identity" json:"port_name"`
+	User        string    `gorm:"size:64;not null;uniqueIndex:idx_session_display_identity" json:"user"`
+	DisplayName string    `gorm:"size:128;not null" json:"display_name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // Session 会话
@@ -164,7 +176,7 @@ type BatchResult struct {
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&User{}, &SSHProfile{}, &MCPToken{}, &Node{}, &SerialPort{}, &Session{}, &AuditLog{},
+		&User{}, &SSHProfile{}, &MCPToken{}, &Node{}, &SerialPort{}, &Session{}, &SessionDisplayName{}, &AuditLog{},
 		&Script{}, &ScriptResult{}, &Device{},
 		&DeviceAlias{}, &RemoteCenter{}, &DeviceGroup{}, &DeviceGroupMember{}, &BatchResult{},
 	)

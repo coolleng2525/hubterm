@@ -29,7 +29,7 @@ python3 scripts/deploy-agent-t2.py deploy
 # 部署并启动
 python3 scripts/deploy-agent-t2.py deploy --start
 # 启动 / 停止 / 重启 / 状态
-python3 scripts/deploy-agent-t2.py start 10.223.40.20 10.223.40.21
+python3 scripts/deploy-agent-t2.py start 10.223.40.20 10.223.40.21 10.223.40.25
 python3 scripts/deploy-agent-t2.py stop  10.223.40.20 10.223.40.21
 python3 scripts/deploy-agent-t2.py restart 10.223.40.20 10.223.40.21
 python3 scripts/deploy-agent-t2.py status 10.223.40.21

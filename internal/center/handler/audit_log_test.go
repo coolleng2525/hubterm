@@ -79,6 +79,28 @@ func TestListAuditLogs(t *testing.T) {
 		}
 	})
 
+	t.Run("search across audit fields", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/api/audit-logs?q=node-001", nil)
+
+		handler.List(c)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+
+		total, ok := resp["total"].(float64)
+		if !ok || int(total) != 1 {
+			t.Errorf("expected total=1 for node search, got %v", total)
+		}
+	})
+
 	t.Run("pagination", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -158,4 +180,32 @@ func TestFilterByAction(t *testing.T) {
 			t.Errorf("expected total=0, got %v", total)
 		}
 	})
+}
+
+func TestListAuditLogActions(t *testing.T) {
+	db := setupTestDB(t)
+	handler := &AuditLogHandler{DB: db}
+
+	db.Create(&model.AuditLog{User: "admin", Action: "command", Detail: "cmd"})
+	db.Create(&model.AuditLog{User: "admin", Action: "rename_session", Detail: "rename"})
+	db.Create(&model.AuditLog{User: "admin", Action: "command", Detail: "cmd2"})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/api/audit-logs/actions", nil)
+
+	handler.Actions(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string][]string
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	actions := resp["actions"]
+	if len(actions) != 2 || actions[0] != "command" || actions[1] != "rename_session" {
+		t.Fatalf("unexpected actions: %v", actions)
+	}
 }

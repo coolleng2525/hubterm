@@ -72,6 +72,9 @@ func TestNodeReport(t *testing.T) {
 		if node.Status != "online" {
 			t.Errorf("expected status=online, got %s", node.Status)
 		}
+		if node.ReportedName != "test-node" {
+			t.Errorf("expected reported_name=test-node, got %s", node.ReportedName)
+		}
 	})
 
 	t.Run("existing node updates", func(t *testing.T) {
@@ -116,8 +119,11 @@ func TestNodeReport(t *testing.T) {
 		if err := db.Where("node_id = ?", "node-002").First(&node).Error; err != nil {
 			t.Fatalf("node not found: %v", err)
 		}
-		if node.Name != "new-name" {
-			t.Errorf("expected name=new-name, got %s", node.Name)
+		if node.Name != "old-name" {
+			t.Errorf("expected local name to be preserved, got %s", node.Name)
+		}
+		if node.ReportedName != "new-name" {
+			t.Errorf("expected reported_name=new-name, got %s", node.ReportedName)
 		}
 		if node.Status != "online" {
 			t.Errorf("expected status=online, got %s", node.Status)
@@ -130,6 +136,57 @@ func TestNodeReport(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		if _, leaked := response["token"]; leaked {
 			t.Error("existing node report must not return its token")
+		}
+	})
+
+	t.Run("existing node follows reported name until locally renamed", func(t *testing.T) {
+		db.Create(&model.Node{
+			NodeID:       "node-002-follow",
+			Name:         "agent-old",
+			ReportedName: "agent-old",
+			Token:        "follow-token",
+			Status:       "offline",
+		})
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body := `{"node_id":"node-002-follow","name":"agent-new","serial_ports":[],"sessions":[]}`
+		c.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Request.Header.Set("Authorization", "Bearer follow-token")
+
+		handler.Report(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var node model.Node
+		db.Where("node_id = ?", "node-002-follow").First(&node)
+		if node.Name != "agent-new" || node.ReportedName != "agent-new" {
+			t.Fatalf("expected node to follow report, got name=%q reported=%q", node.Name, node.ReportedName)
+		}
+
+		if err := db.Model(&node).Update("name", "operator-name").Error; err != nil {
+			t.Fatalf("failed to set local name: %v", err)
+		}
+
+		w2 := httptest.NewRecorder()
+		c2, _ := gin.CreateTestContext(w2)
+		body2 := `{"node_id":"node-002-follow","name":"agent-latest","serial_ports":[],"sessions":[]}`
+		c2.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body2))
+		c2.Request.Header.Set("Content-Type", "application/json")
+		c2.Request.Header.Set("Authorization", "Bearer follow-token")
+		handler.Report(c2)
+
+		if w2.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w2.Code, w2.Body.String())
+		}
+		db.Where("node_id = ?", "node-002-follow").First(&node)
+		if node.Name != "operator-name" {
+			t.Errorf("expected local node name to be preserved, got %q", node.Name)
+		}
+		if node.ReportedName != "agent-latest" {
+			t.Errorf("expected reported_name to track latest report, got %q", node.ReportedName)
 		}
 	})
 
@@ -214,6 +271,108 @@ func TestNodeReport(t *testing.T) {
 			t.Errorf("expected stale port cleanup to leave 1 port, got %d", remaining)
 		}
 	})
+}
+
+func TestNodeReportPreservesSessionDisplayNameWhenSessionIDChanges(t *testing.T) {
+	db := setupTestDB(t)
+	handler := &NodeHandler{DB: db}
+
+	if err := db.Create(&model.Node{NodeID: "node-session-rename", Name: "node", Token: "node-token"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.Session{
+		SessionID:   "old-session",
+		NodeID:      "node-session-rename",
+		PortName:    "Serial: wch.cn 6&3183D08&0&2",
+		User:        "tabby",
+		Type:        "master",
+		DisplayName: "r770-com9",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body := `{
+		"node_id":"node-session-rename",
+		"name":"node",
+		"serial_ports":[],
+		"sessions":[{
+			"session_id":"new-session",
+			"display_name":"Serial: wch.cn 6&3183D08&0&2",
+			"port_name":"Serial: wch.cn 6&3183D08&0&2",
+			"user":"tabby",
+			"type":"master",
+			"client_ip":"tabby",
+			"connected_at":1700000000
+		}]
+	}`
+	c.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Request.Header.Set("Authorization", "Bearer node-token")
+
+	handler.Report(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var session model.Session
+	if err := db.Where("session_id = ?", "new-session").First(&session).Error; err != nil {
+		t.Fatalf("session not found: %v", err)
+	}
+	if session.DisplayName != "r770-com9" {
+		t.Fatalf("expected display name to be preserved, got %q", session.DisplayName)
+	}
+}
+
+func TestNodeReportUsesPersistedSessionDisplayNameOverride(t *testing.T) {
+	db := setupTestDB(t)
+	handler := &NodeHandler{DB: db}
+
+	if err := db.Create(&model.Node{NodeID: "node-session-override", Name: "node", Token: "node-token"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SessionDisplayName{
+		NodeID:      "node-session-override",
+		PortName:    "Serial: wch.cn 6&3183D08&0&2",
+		User:        "tabby",
+		DisplayName: "r770-com9",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body := `{
+		"node_id":"node-session-override",
+		"name":"node",
+		"serial_ports":[],
+		"sessions":[{
+			"session_id":"new-session",
+			"display_name":"Serial: wch.cn 6&3183D08&0&2",
+			"port_name":"Serial: wch.cn 6&3183D08&0&2",
+			"user":"tabby",
+			"type":"master",
+			"client_ip":"tabby",
+			"connected_at":1700000000
+		}]
+	}`
+	c.Request = httptest.NewRequest("POST", "/api/nodes/report", strings.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Request.Header.Set("Authorization", "Bearer node-token")
+
+	handler.Report(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var session model.Session
+	if err := db.Where("session_id = ?", "new-session").First(&session).Error; err != nil {
+		t.Fatalf("session not found: %v", err)
+	}
+	if session.DisplayName != "r770-com9" {
+		t.Fatalf("expected display name override, got %q", session.DisplayName)
+	}
 }
 
 func TestListNode(t *testing.T) {

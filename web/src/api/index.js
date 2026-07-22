@@ -102,6 +102,10 @@ export function getAuditLogs(params) {
   return api.get('/audit-logs', { params })
 }
 
+export function getAuditActions() {
+  return api.get('/audit-logs/actions')
+}
+
 export function sendCommand(nodeId, command, params) {
   return api.post(`/nodes/${nodeId}/command`, { command, params })
 }

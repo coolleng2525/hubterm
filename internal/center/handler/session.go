@@ -163,6 +163,11 @@ func (h *SessionHandler) Rename(c *gin.Context) {
 		return
 	}
 	session.DisplayName = displayName
+	if err := saveSessionDisplayNameOverride(h.DB, session, displayName); err != nil {
+		sessionLog.Error("failed to save session display name override", log.Err(err), log.String("session_id", session.SessionID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
 
 	user, _ := username.(string)
 	sessionLog.Info("session renamed",

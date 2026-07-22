@@ -3,11 +3,12 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/coolleng2525/hubterm/internal/center/model"
 	"github.com/coolleng2525/hubterm/internal/pkg/log"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type AuditLogHandler struct {
@@ -19,7 +20,11 @@ var auditLog = log.New("audit_log_handler")
 func (h *AuditLogHandler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
-	action := c.Query("action")
+	action := strings.TrimSpace(c.Query("action"))
+	search := strings.TrimSpace(c.Query("q"))
+	if search == "" {
+		search = strings.TrimSpace(c.Query("search"))
+	}
 
 	if page < 1 {
 		page = 1
@@ -31,6 +36,13 @@ func (h *AuditLogHandler) List(c *gin.Context) {
 	query := h.DB.Model(&model.AuditLog{})
 	if action != "" {
 		query = query.Where("action = ?", action)
+	}
+	if search != "" {
+		like := "%" + strings.ToLower(search) + "%"
+		query = query.Where(
+			"lower(user) LIKE ? OR lower(action) LIKE ? OR lower(target) LIKE ? OR lower(detail) LIKE ? OR lower(ip) LIKE ?",
+			like, like, like, like, like,
+		)
 	}
 
 	var total int64
@@ -57,6 +69,20 @@ func (h *AuditLogHandler) List(c *gin.Context) {
 		"total": total,
 		"page":  page,
 	})
+}
+
+func (h *AuditLogHandler) Actions(c *gin.Context) {
+	var actions []string
+	if err := h.DB.Model(&model.AuditLog{}).
+		Where("action <> ''").
+		Distinct().
+		Order("action asc").
+		Pluck("action", &actions).Error; err != nil {
+		auditLog.Error("failed to list audit log actions", log.Err(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"actions": actions})
 }
 
 // LogEntry represents a single log entry from an agent.

@@ -147,7 +147,7 @@ func (h *NodeHandler) Report(c *gin.Context) {
 			return
 		}
 	}
-	node.Name = report.Name
+	node.Name, node.ReportedName = nodeNameFromReport(node, report.Name, isNew)
 	node.Source = source
 	if strings.TrimSpace(report.IP) != "" {
 		node.IP = report.IP
@@ -226,14 +226,14 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	}
 
 	var existingSessions []model.Session
-	displayNames := make(map[string]string)
 	if err := h.DB.Where("node_id = ?", report.NodeID).Find(&existingSessions).Error; err != nil {
 		nodeLog.Error("failed to load existing sessions", log.Err(err), log.String("node_id", report.NodeID))
 	}
-	for _, session := range existingSessions {
-		if session.DisplayName != "" {
-			displayNames[session.SessionID] = session.DisplayName
-		}
+	displayNames, identityDisplayNames := sessionDisplayNameIndexes(existingSessions)
+	if overrides, err := sessionDisplayNameOverrides(h.DB, report.NodeID); err != nil {
+		nodeLog.Error("failed to load session display name overrides", log.Err(err), log.String("node_id", report.NodeID))
+	} else {
+		mergeSessionDisplayNameOverrides(identityDisplayNames, overrides)
 	}
 
 	// sync sessions: delete old, insert new, preserving operator display names
@@ -242,7 +242,7 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		nodeLog.Error("failed to delete old sessions", log.Err(err), log.String("node_id", report.NodeID))
 	}
 	for _, s := range report.Sessions {
-		displayName := displayNames[s.SessionID]
+		displayName := preservedSessionDisplayName(displayNames, identityDisplayNames, s.SessionID, s.PortName, s.User)
 		if displayName == "" {
 			displayName = strings.TrimSpace(s.DisplayName)
 		}
@@ -272,11 +272,119 @@ func (h *NodeHandler) Report(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func nodeNameFromReport(node model.Node, reported string, isNew bool) (string, string) {
+	reported = strings.TrimSpace(reported)
+	if reported == "" {
+		return node.Name, node.ReportedName
+	}
+	name := strings.TrimSpace(node.Name)
+	lastReported := strings.TrimSpace(node.ReportedName)
+	if isNew || name == "" || name == lastReported || (lastReported == "" && name == reported) {
+		return reported, reported
+	}
+	return node.Name, reported
+}
+
 func normalizeNodeSource(source string) string {
 	if strings.EqualFold(strings.TrimSpace(source), "tabby") {
 		return "tabby"
 	}
 	return "agent"
+}
+
+func sessionDisplayNameIndexes(sessions []model.Session) (map[string]string, map[string]string) {
+	bySessionID := make(map[string]string)
+	byIdentity := make(map[string]string)
+	ambiguousIdentity := make(map[string]struct{})
+	for _, session := range sessions {
+		displayName := strings.TrimSpace(session.DisplayName)
+		if displayName == "" {
+			continue
+		}
+		bySessionID[session.SessionID] = displayName
+		key := sessionIdentityKey(session.PortName, session.User)
+		if key == "" {
+			continue
+		}
+		if existing, ok := byIdentity[key]; ok && existing != displayName {
+			ambiguousIdentity[key] = struct{}{}
+			continue
+		}
+		byIdentity[key] = displayName
+	}
+	for key := range ambiguousIdentity {
+		delete(byIdentity, key)
+	}
+	return bySessionID, byIdentity
+}
+
+func preservedSessionDisplayName(bySessionID, byIdentity map[string]string, sessionID, portName, user string) string {
+	if displayName := bySessionID[sessionID]; displayName != "" {
+		return displayName
+	}
+	return byIdentity[sessionIdentityKey(portName, user)]
+}
+
+func sessionIdentityKey(portName, user string) string {
+	portName = strings.TrimSpace(portName)
+	user = strings.TrimSpace(user)
+	if portName == "" || user == "" {
+		return ""
+	}
+	return portName + "\x00" + user
+}
+
+func sessionDisplayNameOverrides(db *gorm.DB, nodeID string) (map[string]string, error) {
+	var overrides []model.SessionDisplayName
+	if err := db.Where("node_id = ?", nodeID).Find(&overrides).Error; err != nil {
+		return nil, err
+	}
+	byIdentity := make(map[string]string, len(overrides))
+	for _, override := range overrides {
+		key := sessionIdentityKey(override.PortName, override.User)
+		if key == "" {
+			continue
+		}
+		if displayName := strings.TrimSpace(override.DisplayName); displayName != "" {
+			byIdentity[key] = displayName
+		}
+	}
+	return byIdentity, nil
+}
+
+func mergeSessionDisplayNameOverrides(target, overrides map[string]string) {
+	for key, displayName := range overrides {
+		if displayName != "" {
+			target[key] = displayName
+		}
+	}
+}
+
+func saveSessionDisplayNameOverride(db *gorm.DB, session model.Session, displayName string) error {
+	key := sessionIdentityKey(session.PortName, session.User)
+	if key == "" {
+		return nil
+	}
+	displayName = strings.TrimSpace(displayName)
+	query := db.Where("node_id = ? AND port_name = ? AND user = ?", session.NodeID, session.PortName, session.User)
+	if displayName == "" {
+		return query.Delete(&model.SessionDisplayName{}).Error
+	}
+
+	var override model.SessionDisplayName
+	if err := query.First(&override).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return err
+		}
+		override = model.SessionDisplayName{
+			NodeID:      session.NodeID,
+			PortName:    session.PortName,
+			User:        session.User,
+			DisplayName: displayName,
+		}
+		return db.Create(&override).Error
+	}
+	return db.Model(&override).Update("display_name", displayName).Error
 }
 
 // Command 下发指令到节点

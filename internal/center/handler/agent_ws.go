@@ -330,8 +330,14 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 	now := time.Now()
 	source := normalizeNodeSource(report.Source)
 	tx := h.DB.Begin()
-	if err := tx.Model(&model.Node{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
-		"name": report.Name, "hostname": report.Hostname, "os": report.OS,
+	var existingNode model.Node
+	if err := tx.Where("node_id = ?", nodeID).First(&existingNode).Error; err != nil {
+		tx.Rollback()
+		return
+	}
+	nodeName, reportedName := nodeNameFromReport(existingNode, report.Name, false)
+	if err := tx.Model(&existingNode).Updates(map[string]interface{}{
+		"name": nodeName, "reported_name": reportedName, "hostname": report.Hostname, "os": report.OS,
 		"source":         source,
 		"os_version":     report.OSVersion,
 		"arch":           report.Arch,
@@ -345,6 +351,21 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 	}).Error; err != nil {
 		tx.Rollback()
 		return
+	}
+
+	var existingSessions []model.Session
+	if err := tx.Where("node_id = ?", nodeID).Find(&existingSessions).Error; err != nil {
+		agentWSLog.Error("failed to load existing sessions", log.String("node_id", nodeID), log.Err(err))
+		tx.Rollback()
+		return
+	}
+	displayNames, identityDisplayNames := sessionDisplayNameIndexes(existingSessions)
+	if overrides, err := sessionDisplayNameOverrides(tx, nodeID); err != nil {
+		agentWSLog.Error("failed to load session display name overrides", log.String("node_id", nodeID), log.Err(err))
+		tx.Rollback()
+		return
+	} else {
+		mergeSessionDisplayNameOverrides(identityDisplayNames, overrides)
 	}
 
 	sessionIDs := make([]string, 0, len(report.Sessions))
@@ -368,18 +389,22 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 			tx.Rollback()
 			return
 		}
+		displayName := preservedSessionDisplayName(displayNames, identityDisplayNames, incoming.SessionID, incoming.PortName, incoming.User)
+		if displayName == "" {
+			displayName = strings.TrimSpace(incoming.DisplayName)
+		}
 		attrs := map[string]interface{}{
 			"node_id": nodeID, "port_name": incoming.PortName, "user": incoming.User,
 			"type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
 		}
-		if strings.TrimSpace(incoming.DisplayName) != "" && (result.Error == gorm.ErrRecordNotFound || session.DisplayName == "") {
-			attrs["display_name"] = strings.TrimSpace(incoming.DisplayName)
+		if displayName != "" && (result.Error == gorm.ErrRecordNotFound || strings.TrimSpace(session.DisplayName) == "") {
+			attrs["display_name"] = displayName
 		}
 		if result.Error == gorm.ErrRecordNotFound {
 			session = model.Session{
 				SessionID:   incoming.SessionID,
 				NodeID:      nodeID,
-				DisplayName: strings.TrimSpace(incoming.DisplayName),
+				DisplayName: displayName,
 				PortName:    incoming.PortName,
 				User:        incoming.User,
 				Type:        incoming.Type,

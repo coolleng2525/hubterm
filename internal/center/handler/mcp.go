@@ -136,6 +136,10 @@ func (h *MCPHandler) callTool(c *gin.Context, params json.RawMessage) (interface
 		result, err = h.toolGetCommandResult(req.Arguments)
 	case "hubterm_send_terminal_input":
 		result, err = h.toolSendTerminalInput(c, req.Arguments)
+	case "hubterm_list_quick_sends":
+		result, err = h.toolListQuickSends(req.Arguments)
+	case "hubterm_run_quick_send":
+		result, err = h.toolRunQuickSend(c, req.Arguments)
 	case "hubterm_get_terminal_output":
 		result, err = h.toolGetTerminalOutput(req.Arguments)
 	case "hubterm_upload_and_run_script":
@@ -226,6 +230,129 @@ func (h *MCPHandler) toolExecuteCommand(c *gin.Context, raw json.RawMessage) (in
 		mcpLog.Warn("failed to create audit log", log.Err(err))
 	}
 	return gin.H{"cmd_id": cmdID, "status": "pending", "mode": mode}, nil
+}
+
+func (h *MCPHandler) toolListQuickSends(raw json.RawMessage) (interface{}, error) {
+	var args struct {
+		Search        string `json:"search"`
+		IncludeSource bool   `json:"include_source"`
+		Limit         int    `json:"limit"`
+	}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &args); err != nil {
+			return nil, fmt.Errorf("invalid arguments")
+		}
+	}
+	args.Search = strings.TrimSpace(args.Search)
+	if args.Limit <= 0 || args.Limit > 200 {
+		args.Limit = 50
+	}
+
+	query := h.DB.Model(&model.Script{}).Order("name asc").Limit(args.Limit)
+	if args.Search != "" {
+		like := "%" + strings.ToLower(args.Search) + "%"
+		query = query.Where("lower(name) LIKE ? OR lower(description) LIKE ? OR lower(language) LIKE ?", like, like, like)
+	}
+
+	var scripts []model.Script
+	if err := query.Find(&scripts).Error; err != nil {
+		return nil, fmt.Errorf("query quick sends: %w", err)
+	}
+
+	items := make([]gin.H, 0, len(scripts))
+	for _, item := range scripts {
+		entry := gin.H{
+			"id":          item.ID,
+			"script_id":   item.ScriptID,
+			"name":        item.Name,
+			"description": item.Description,
+			"language":    item.Language,
+			"timeout":     item.Timeout,
+		}
+		if args.IncludeSource {
+			entry["source"] = item.Source
+		}
+		items = append(items, entry)
+	}
+	return gin.H{"quick_sends": items}, nil
+}
+
+func (h *MCPHandler) toolRunQuickSend(c *gin.Context, raw json.RawMessage) (interface{}, error) {
+	var args struct {
+		DeviceID  string `json:"device_id"`
+		SessionID string `json:"session_id"`
+		ScriptID  string `json:"script_id"`
+		Name      string `json:"name"`
+	}
+	if err := json.Unmarshal(raw, &args); err != nil {
+		return nil, fmt.Errorf("invalid arguments")
+	}
+	args.DeviceID = strings.TrimSpace(args.DeviceID)
+	args.SessionID = strings.TrimSpace(args.SessionID)
+	args.ScriptID = strings.TrimSpace(args.ScriptID)
+	args.Name = strings.TrimSpace(args.Name)
+	if args.DeviceID == "" && args.SessionID == "" {
+		return nil, fmt.Errorf("device_id or session_id is required")
+	}
+	if args.ScriptID == "" && args.Name == "" {
+		return nil, fmt.Errorf("script_id or name is required")
+	}
+	if h.AgentWS == nil {
+		return nil, fmt.Errorf("agent terminal channel is unavailable")
+	}
+
+	var quickSend model.Script
+	query := h.DB.Model(&model.Script{})
+	if args.ScriptID != "" {
+		query = query.Where("script_id = ? OR id = ?", args.ScriptID, args.ScriptID)
+	} else {
+		query = query.Where("name = ?", args.Name)
+	}
+	if err := query.First(&quickSend).Error; err != nil {
+		return nil, fmt.Errorf("quick send not found")
+	}
+
+	sess, err := h.resolveTerminalSession(args.DeviceID, args.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	chunks := quickSendTerminalChunks(quickSend.Source, quickSend.Language)
+	for _, chunk := range chunks {
+		if err := h.AgentWS.SendTerminalInput(sess.NodeID, sess.SessionID, encodeTerminalInput(chunk)); err != nil {
+			return nil, err
+		}
+	}
+
+	username, _ := c.Get("username")
+	usernameStr, _ := username.(string)
+	if err := h.DB.Create(&model.AuditLog{User: usernameStr, Action: "mcp_quick_send", Target: sess.SessionID, Detail: fmt.Sprintf("quick_send: %s, device_id: %s", quickSend.Name, args.DeviceID)}).Error; err != nil {
+		mcpLog.Warn("failed to create audit log", log.Err(err))
+	}
+	return gin.H{"status": "sent", "quick_send": quickSend.Name, "script_id": quickSend.ScriptID, "device_id": args.DeviceID, "session_id": sess.SessionID, "node_id": sess.NodeID}, nil
+}
+
+func quickSendTerminalChunks(source, language string) []string {
+	trimmed := strings.TrimSpace(source)
+	isPython := language == "python" || strings.HasPrefix(trimmed, "#!/usr/bin/env python") || strings.HasPrefix(trimmed, "#!/usr/bin/python")
+	if strings.HasPrefix(trimmed, "#!") || isPython {
+		ext := "sh"
+		runner := "chmod +x %[1]s\n%[1]s\nrm -f %[1]s\n"
+		if isPython {
+			ext = "py"
+			runner = "python3 %[1]s\nrm -f %[1]s\n"
+		}
+		tmpFile := "/tmp/hubterm_mcp_" + uuid.New().String() + "." + ext
+		delimiter := "HUBTERM_MCP_" + strings.ReplaceAll(uuid.New().String(), "-", "_")
+		cleanSource := strings.ReplaceAll(source, "\r", "")
+		return []string{fmt.Sprintf("cat << '%s' > %s\n%s\n%s\n", delimiter, tmpFile, cleanSource, delimiter) + fmt.Sprintf(runner, tmpFile)}
+	}
+
+	lines := strings.Split(source, "\n")
+	chunks := make([]string, 0, len(lines))
+	for _, line := range lines {
+		chunks = append(chunks, strings.TrimRight(line, "\r")+"\r")
+	}
+	return chunks
 }
 
 func (h *MCPHandler) toolSendTerminalInput(c *gin.Context, raw json.RawMessage) (interface{}, error) {
@@ -516,6 +643,8 @@ func mcpTools() []gin.H {
 		{"name": "hubterm_execute_command", "description": "Execute a command asynchronously on a HubTerm device.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"device_id": gin.H{"type": "string", "description": "HubTerm device ID."}, "command": gin.H{"type": "string", "description": "Command to execute."}, "timeout": gin.H{"type": "integer", "description": "Timeout in seconds. Default 30."}}, "required": []string{"device_id", "command"}}},
 		{"name": "hubterm_get_command_result", "description": "Fetch the status and output for a previously executed command.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"cmd_id": gin.H{"type": "string", "description": "Command ID returned by hubterm_execute_command."}}, "required": []string{"cmd_id"}}},
 		{"name": "hubterm_send_terminal_input", "description": "Send input to an online HubTerm terminal session discovered from active sessions or SSH terminals.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"device_id": gin.H{"type": "string", "description": "Discovered terminal device ID, such as com9-r770."}, "session_id": gin.H{"type": "string", "description": "Optional raw HubTerm session ID."}, "input": gin.H{"type": "string", "description": "Text to send to the terminal."}, "append_newline": gin.H{"type": "boolean", "description": "Append Enter/CR after input. Default true."}}, "required": []string{"input"}}},
+		{"name": "hubterm_list_quick_sends", "description": "List saved Quick Send presets from HubTerm Scripts. Use this before hubterm_run_quick_send when the user refers to a preset by name or asks what quick sends are available.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"search": gin.H{"type": "string", "description": "Optional fuzzy search over preset name, description, or language."}, "include_source": gin.H{"type": "boolean", "description": "Include preset source text. Default false."}, "limit": gin.H{"type": "integer", "description": "Maximum presets to return. Default 50, max 200."}}, "required": []string{}}},
+		{"name": "hubterm_run_quick_send", "description": "Run a saved Quick Send preset against an active terminal session. It sends shell/text presets line by line and runs Python or shebang scripts through a temporary file, matching the web Quick Send behavior.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"device_id": gin.H{"type": "string", "description": "Discovered terminal device ID, such as r770-com9 or com9-r770."}, "session_id": gin.H{"type": "string", "description": "Optional raw HubTerm session ID."}, "script_id": gin.H{"type": "string", "description": "Quick Send script_id or numeric id returned by hubterm_list_quick_sends."}, "name": gin.H{"type": "string", "description": "Quick Send preset name. Use only when script_id is unknown."}}, "required": []string{}}},
 		{"name": "hubterm_get_terminal_output", "description": "Fetch recent output from an online HubTerm terminal session.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"device_id": gin.H{"type": "string", "description": "Discovered terminal device ID, such as com9-r770."}, "session_id": gin.H{"type": "string", "description": "Optional raw HubTerm session ID."}, "limit": gin.H{"type": "integer", "description": "Maximum recent records to return. Default 50, max 200."}, "include_input": gin.H{"type": "boolean", "description": "Include echoed input records. Default false."}}, "required": []string{}}},
 		{"name": "hubterm_upload_and_run_script", "description": "Upload a Python or shell script and execute it on devices or nodes.", "inputSchema": gin.H{"type": "object", "properties": gin.H{"name": gin.H{"type": "string", "description": "Script name."}, "description": gin.H{"type": "string", "description": "Optional script description."}, "language": gin.H{"type": "string", "description": "python or shell. Default python."}, "source": gin.H{"type": "string", "description": "Script source code."}, "params": gin.H{"type": "array", "description": "Optional script parameter definitions."}, "targets": gin.H{"type": "array", "items": gin.H{"type": "string"}, "description": "Device IDs or node IDs."}, "timeout": gin.H{"type": "integer", "description": "Timeout in seconds. Default 30."}}, "required": []string{"name", "source", "targets"}}},
 	}

@@ -242,6 +242,14 @@ func TestRenameSession(t *testing.T) {
 		if session.DisplayName != "客户A交换机" {
 			t.Errorf("expected display name updated, got %q", session.DisplayName)
 		}
+
+		var override model.SessionDisplayName
+		if err := db.Where("node_id = ? AND port_name = ? AND user = ?", "node-001", "/dev/ttyUSB0", "admin").First(&override).Error; err != nil {
+			t.Fatalf("expected display name override: %v", err)
+		}
+		if override.DisplayName != "客户A交换机" {
+			t.Errorf("expected override display name, got %q", override.DisplayName)
+		}
 	})
 
 	t.Run("trim and clear display name", func(t *testing.T) {
@@ -263,6 +271,12 @@ func TestRenameSession(t *testing.T) {
 		db.Where("session_id = ?", "sess-rename-001").First(&session)
 		if session.DisplayName != "" {
 			t.Errorf("expected display name cleared, got %q", session.DisplayName)
+		}
+
+		var count int64
+		db.Model(&model.SessionDisplayName{}).Where("node_id = ? AND port_name = ? AND user = ?", "node-001", "/dev/ttyUSB0", "admin").Count(&count)
+		if count != 0 {
+			t.Errorf("expected display name override cleared, got %d", count)
 		}
 	})
 }

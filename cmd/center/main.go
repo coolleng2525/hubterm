@@ -160,6 +160,7 @@ func main() {
 		api.POST("/sessions/:id/assign-master", middleware.OperatorRequired(), sessionH.AssignMaster)
 
 		api.GET("/audit-logs", auditH.List)
+		api.GET("/audit-logs/actions", auditH.Actions)
 
 		api.POST("/scripts", middleware.OperatorRequired(), scriptH.Create)
 		api.POST("/scripts/:id/execute", middleware.OperatorRequired(), scriptH.Execute)
