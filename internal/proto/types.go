@@ -1,6 +1,69 @@
 // FIXED: renamed from proto to hubtermproto to avoid generic package name
 package hubtermproto
 
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	SerialParityNone = "none"
+	SerialParityOdd  = "odd"
+	SerialParityEven = "even"
+
+	SerialFlowNone   = "none"
+	SerialFlowRTSCTS = "rtscts"
+)
+
+var supportedSerialBaudRates = map[int]struct{}{
+	1200: {}, 2400: {}, 4800: {}, 9600: {}, 19200: {},
+	38400: {}, 57600: {}, 115200: {}, 230400: {},
+}
+
+// SerialConfig is the persisted and transmitted configuration for a serial port.
+type SerialConfig struct {
+	PortName    string `json:"port_name"`
+	BaudRate    int    `json:"baud_rate"`
+	DataBits    int    `json:"data_bits"`
+	Parity      string `json:"parity"`
+	StopBits    int    `json:"stop_bits"`
+	FlowControl string `json:"flow_control"`
+}
+
+func DefaultSerialConfig(portName string) SerialConfig {
+	return SerialConfig{
+		PortName:    portName,
+		BaudRate:    115200,
+		DataBits:    8,
+		Parity:      SerialParityNone,
+		StopBits:    1,
+		FlowControl: SerialFlowNone,
+	}
+}
+
+func (c SerialConfig) Validate() error {
+	portName := strings.TrimSpace(c.PortName)
+	if portName == "" || len(portName) > 256 {
+		return fmt.Errorf("invalid serial port name")
+	}
+	if _, ok := supportedSerialBaudRates[c.BaudRate]; !ok {
+		return fmt.Errorf("unsupported baud rate: %d", c.BaudRate)
+	}
+	if c.DataBits < 5 || c.DataBits > 8 {
+		return fmt.Errorf("data bits must be between 5 and 8")
+	}
+	if c.Parity != SerialParityNone && c.Parity != SerialParityOdd && c.Parity != SerialParityEven {
+		return fmt.Errorf("unsupported parity: %s", c.Parity)
+	}
+	if c.StopBits != 1 && c.StopBits != 2 {
+		return fmt.Errorf("stop bits must be 1 or 2")
+	}
+	if c.FlowControl != SerialFlowNone && c.FlowControl != SerialFlowRTSCTS {
+		return fmt.Errorf("unsupported flow control: %s", c.FlowControl)
+	}
+	return nil
+}
+
 // NetworkInterfaceInfo 网络接口信息
 type NetworkInterfaceInfo struct {
 	Name string `json:"name"`
@@ -65,6 +128,7 @@ type SerialPortInfo struct {
 type SessionInfo struct {
 	SessionID   string `json:"session_id"`
 	DisplayName string `json:"display_name,omitempty"`
+	Protocol    string `json:"protocol,omitempty"`
 	PortName    string `json:"port_name"`
 	User        string `json:"user"`
 	Type        string `json:"type"` // master/watcher
@@ -109,25 +173,33 @@ type TerminalInput struct {
 	Data      string `json:"data"` // base64 encoded bytes
 }
 
+// TerminalState reports lifecycle changes that happen after a command reply.
+type TerminalState struct {
+	SessionID string `json:"session_id"`
+	Status    string `json:"status"` // open / closed / error
+	Error     string `json:"error,omitempty"`
+}
+
 // ExecCommand 中心下发的命令执行请求
 type ExecCommand struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command     string `json:"command,omitempty"`
-		Timeout     int    `json:"timeout,omitempty"` // 秒
-		SessionID   string `json:"session_id,omitempty"`
-		Data        string `json:"data,omitempty"`
-		Shell       string `json:"shell,omitempty"`
-		Rows        int    `json:"rows,omitempty"`
-		Cols        int    `json:"cols,omitempty"`
-		DisplayName string `json:"display_name,omitempty"`
-		Host        string `json:"host,omitempty"`
-		Port        int    `json:"port,omitempty"`
-		Username    string `json:"username,omitempty"`
-		Password    string `json:"password,omitempty"`
-		PrivateKey  string `json:"private_key,omitempty"`
-		Passphrase  string `json:"passphrase,omitempty"`
+		Command     string        `json:"command,omitempty"`
+		Timeout     int           `json:"timeout,omitempty"` // 秒
+		SessionID   string        `json:"session_id,omitempty"`
+		Data        string        `json:"data,omitempty"`
+		Shell       string        `json:"shell,omitempty"`
+		Rows        int           `json:"rows,omitempty"`
+		Cols        int           `json:"cols,omitempty"`
+		DisplayName string        `json:"display_name,omitempty"`
+		Host        string        `json:"host,omitempty"`
+		Port        int           `json:"port,omitempty"`
+		Username    string        `json:"username,omitempty"`
+		Password    string        `json:"password,omitempty"`
+		PrivateKey  string        `json:"private_key,omitempty"`
+		Passphrase  string        `json:"passphrase,omitempty"`
+		Serial      *SerialConfig `json:"serial,omitempty"`
 	} `json:"payload,omitempty"`
 }
 

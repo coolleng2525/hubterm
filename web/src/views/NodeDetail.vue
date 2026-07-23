@@ -121,7 +121,12 @@
         <span>串口列表</span>
       </template>
       <el-table :data="ports" stripe style="width:100%">
-        <el-table-column prop="port_name" label="端口" width="160" />
+        <el-table-column label="名称" min-width="210">
+          <template #default="{ row }">
+            <div>{{ row.alias || row.port_name }}</div>
+            <div v-if="row.alias" style="color:#909399;font-size:12px;margin-top:2px">{{ row.port_name }}</div>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="描述" min-width="150" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
@@ -131,6 +136,33 @@
           </template>
         </el-table-column>
         <el-table-column prop="baud_rate" label="波特率" width="80" />
+        <el-table-column label="参数" width="130">
+          <template #default="{ row }">
+            {{ row.data_bits }}{{ parityLabel(row.parity) }}{{ row.stop_bits }} · {{ flowControlLabel(row.flow_control) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              type="success"
+              link
+              size="small"
+              :loading="isSerialConnecting(row.id)"
+              :disabled="node.status !== 'online' || row.status === 'offline'"
+              @click="connectSerial(row, false)"
+            >连接</el-button>
+            <el-button
+              type="success"
+              link
+              size="small"
+              :disabled="node.status !== 'online' || row.status === 'offline' || isSerialConnecting(row.id)"
+              @click="connectSerial(row, true)"
+            >新标签页连接</el-button>
+            <el-button type="primary" link size="small" :disabled="row.status === 'busy'" @click="showSerialConfig(row)">
+              编辑
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -224,6 +256,56 @@
         <el-button type="primary" size="small" :loading="savingProfile" @click="saveProfile">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="serialDialogVisible" title="编辑串口配置" width="440px" destroy-on-close>
+      <el-form :model="serialForm" label-width="90px">
+        <el-form-item label="端口">
+          <code>{{ editingSerialPort?.port_name }}</code>
+        </el-form-item>
+        <el-form-item label="别名">
+          <el-input
+            v-model.trim="serialForm.alias"
+            clearable
+            maxlength="128"
+            show-word-limit
+            placeholder="例如：brown-serial"
+          />
+        </el-form-item>
+        <el-form-item label="波特率">
+          <el-select v-model="serialForm.baud_rate" style="width:100%">
+            <el-option v-for="rate in baudRates" :key="rate" :label="rate" :value="rate" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="数据位">
+          <el-select v-model="serialForm.data_bits" style="width:100%">
+            <el-option v-for="bits in [5, 6, 7, 8]" :key="bits" :label="bits" :value="bits" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="校验位">
+          <el-select v-model="serialForm.parity" style="width:100%">
+            <el-option label="无" value="none" />
+            <el-option label="奇校验" value="odd" />
+            <el-option label="偶校验" value="even" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="停止位">
+          <el-radio-group v-model="serialForm.stop_bits">
+            <el-radio-button :value="1">1</el-radio-button>
+            <el-radio-button :value="2">2</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="流控">
+          <el-select v-model="serialForm.flow_control" style="width:100%">
+            <el-option label="无" value="none" />
+            <el-option label="RTS/CTS" value="rtscts" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="serialDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingSerialConfig" @click="saveSerialConfig">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -231,7 +313,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getNode, kickSession, assignMaster, renameSession, startLocalShell, startAgentSSH, getSSHProfiles, createSSHProfile, updateSSHProfile, deleteSSHProfile } from '../api'
+import { getNode, kickSession, assignMaster, renameSession, startLocalShell, startAgentSSH, getSSHProfiles, createSSHProfile, updateSSHProfile, deleteSSHProfile, connectSerialPort, updateSerialPortConfig } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -249,6 +331,12 @@ const sshForm = ref({
 })
 const savingProfile = ref(false)
 const dialogVisible = ref(false)
+const serialDialogVisible = ref(false)
+const savingSerialConfig = ref(false)
+const editingSerialPort = ref(null)
+const connectingSerialPorts = ref(new Set())
+const baudRates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400]
+const serialForm = ref({ alias: '', baud_rate: 115200, data_bits: 8, parity: 'none', stop_bits: 1, flow_control: 'none' })
 const editingProfileId = ref(null)
 const dialogForm = ref({
   name: '',
@@ -295,6 +383,72 @@ async function fetchNode() {
 function formatTime(t) {
   if (!t) return '-'
   return new Date(t).toLocaleString('zh-CN')
+}
+
+function parityLabel(parity) {
+  return parity === 'odd' ? 'O' : parity === 'even' ? 'E' : 'N'
+}
+
+function flowControlLabel(flowControl) {
+  return flowControl === 'rtscts' ? 'RTS/CTS' : '无流控'
+}
+
+function isSerialConnecting(portId) {
+  return connectingSerialPorts.value.has(portId)
+}
+
+async function connectSerial(port, newTab) {
+	const newWindow = newTab ? window.open('', '_blank') : null
+  connectingSerialPorts.value = new Set([...connectingSerialPorts.value, port.id])
+  try {
+    const response = await connectSerialPort(node.value.node_id, port.id)
+    const path = `/shared-terminal/${node.value.node_id}/${response.data.session_id}`
+    if (newTab) {
+		if (newWindow) {
+			newWindow.location.href = router.resolve(path).href
+		} else {
+			ElMessage.warning('浏览器阻止了新标签页，请允许弹出窗口后重试')
+		}
+    } else {
+      router.push(path)
+    }
+  } catch (error) {
+		newWindow?.close()
+    ElMessage.error(error.response?.data?.error || '无法连接串口')
+    await fetchNode()
+  } finally {
+    const next = new Set(connectingSerialPorts.value)
+    next.delete(port.id)
+    connectingSerialPorts.value = next
+  }
+}
+
+function showSerialConfig(port) {
+  editingSerialPort.value = port
+  serialForm.value = {
+    alias: port.alias || '',
+    baud_rate: port.baud_rate || 115200,
+    data_bits: port.data_bits || 8,
+    parity: port.parity || 'none',
+    stop_bits: port.stop_bits || 1,
+    flow_control: port.flow_control || 'none',
+  }
+  serialDialogVisible.value = true
+}
+
+async function saveSerialConfig() {
+  if (!editingSerialPort.value) return
+  savingSerialConfig.value = true
+  try {
+    await updateSerialPortConfig(node.value.node_id, editingSerialPort.value.id, serialForm.value)
+    serialDialogVisible.value = false
+    await fetchNode()
+    ElMessage.success('串口配置已保存')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '保存串口参数失败')
+  } finally {
+    savingSerialConfig.value = false
+  }
 }
 
 function hasNumber(value) {

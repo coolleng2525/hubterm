@@ -7,6 +7,10 @@
         <el-tag :type="connected ? 'success' : 'info'" size="small">
           {{ connected ? '已连接' : '未连接' }}
         </el-tag>
+        <el-tag :type="participantRole === 'master' ? 'danger' : 'info'" size="small">
+          {{ participantRole === 'master' ? '主控' : '观察者' }}
+        </el-tag>
+        <span v-if="sessionPortName" class="serial-params">{{ sessionPortName }}<template v-if="serialParams"> · {{ serialParams }}</template></span>
       </div>
       <div class="connection-actions">
         <el-button type="warning" size="small" @click="connect">重新连接</el-button>
@@ -66,6 +70,7 @@
         </el-button>
         <el-input
           v-model="customSendText"
+		  :disabled="!canInput"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 4 }"
           size="small"
@@ -73,7 +78,7 @@
           style="width:250px"
           @keydown.enter.exact.prevent="handleQuickSend"
         />
-        <el-button type="primary" size="small" :disabled="!customSendText && !selectedScript" @click="handleQuickSend">发送</el-button>
+        <el-button type="primary" size="small" :disabled="!canInput || (!customSendText && !selectedScript)" @click="handleQuickSend">发送</el-button>
       </div>
 
 
@@ -91,18 +96,39 @@
       </div>
     </div>
 
+    <div v-if="participants.length" class="participants-bar">
+      <span class="config-label">在线参与者</span>
+      <el-tag v-for="participant in participants" :key="participant.id" :type="participant.role === 'master' ? 'danger' : 'info'" size="small">
+        {{ participant.username }} · {{ participant.role === 'master' ? '主控' : '观察' }}
+      </el-tag>
+      <template v-if="currentUserRole === 'admin'">
+        <el-dropdown trigger="click">
+          <el-button size="small">管理参与者</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for="participant in participants" :key="participant.id" :disabled="participant.id === participantId">
+                <span>{{ participant.username }}</span>
+                <el-button v-if="participant.role !== 'master'" type="primary" link size="small" @click.stop="assignParticipantMaster(participant.id)">设为主控</el-button>
+                <el-button type="danger" link size="small" @click.stop="kickParticipant(participant.id)">踢出</el-button>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </template>
+    </div>
+
     <div ref="terminalContainer" class="terminal-container"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { SearchAddon } from 'xterm-addon-search'
 import 'xterm/css/xterm.css'
-import { getSessions, getScripts } from '../api'
+import { getSessions, getScripts, getProfile, getNode } from '../api'
 import { ElMessage } from 'element-plus'
 import { Star, StarFilled } from '@element-plus/icons-vue'
 
@@ -117,6 +143,13 @@ const scrollbackOptions = [1000, 5000, 10000, 50000]
 const scrollback = ref(loadScrollback())
 const connected = ref(false)
 const sessionDisplayName = ref('')
+const sessionPortName = ref('')
+const serialParams = ref('')
+const participantId = ref('')
+const participantRole = ref('observer')
+const participants = ref([])
+const currentUserRole = ref('')
+const canInput = computed(() => connected.value && participantRole.value === 'master')
 
 // Quick Send state
 const selectedScriptId = ref('')
@@ -140,7 +173,19 @@ async function fetchSessionInfo() {
     const response = await getSessions(route.params.nodeId)
     const currentSession = response.data.find(s => s.session_id === route.params.sessionId)
     if (currentSession) {
-      sessionDisplayName.value = currentSession.display_name || currentSession.port_name || ''
+      const customDisplayName = currentSession.display_name || ''
+      sessionDisplayName.value = customDisplayName || currentSession.port_name || ''
+      sessionPortName.value = currentSession.port_name || ''
+	  if (currentSession.protocol === 'serial') {
+		const nodeResponse = await getNode(route.params.nodeId)
+		const port = nodeResponse.data.ports?.find(item => item.port_name === currentSession.port_name)
+		if (port) {
+		  if (!customDisplayName && port.alias) sessionDisplayName.value = port.alias
+		  const parity = port.parity === 'odd' ? 'O' : port.parity === 'even' ? 'E' : 'N'
+		  const flow = port.flow_control === 'rtscts' ? 'RTS/CTS' : '无流控'
+		  serialParams.value = `${port.baud_rate} · ${port.data_bits}${parity}${port.stop_bits} · ${flow}`
+		}
+	  }
       return true
     }
     writeStatus('当前终端会话已不存在或不活跃，请重新创建终端并打开新的共享链接。', '33')
@@ -256,6 +301,10 @@ async function sendTextToTerminal(text, language = 'shell') {
 }
 
 async function handleQuickSend() {
+  if (!canInput.value) {
+    ElMessage.warning('当前为观察模式，只有主控可以发送输入')
+    return
+  }
   let text = ''
   let lang = 'shell'
   if (selectedScript.value) {
@@ -336,7 +385,29 @@ function connect() {
         term.writeln(`\r\n\x1b[31m${message.data?.message || 'Request failed'}\x1b[0m`)
         return
       }
+      if (message.type === 'terminal_subscribed') {
+        participantId.value = message.data?.participant_id || ''
+        participantRole.value = message.data?.role || 'observer'
+        participants.value = message.data?.participants || []
+        return
+      }
+      if (message.type === 'terminal_participants' && message.data?.session_id === route.params.sessionId) {
+        participants.value = message.data?.participants || []
+        const self = participants.value.find(item => item.id === participantId.value)
+        participantRole.value = self?.role || 'observer'
+        return
+      }
+      if (message.type === 'terminal_kicked') {
+        writeStatus('你已被管理员移出该终端', '31')
+        disconnect()
+        return
+      }
       const terminal = message.data?.terminal
+      if (message.type === 'terminal_state' && terminal?.session_id === route.params.sessionId && terminal.status !== 'open') {
+        writeStatus(terminal.error || '串口连接已关闭', '31')
+        connected.value = false
+        return
+      }
       if (
         message.type === 'terminal_data' &&
         message.data?.node_id === route.params.nodeId &&
@@ -363,6 +434,16 @@ function disconnect() {
     ws = null
   }
   connected.value = false
+  participantRole.value = 'observer'
+  participants.value = []
+}
+
+function assignParticipantMaster(id) {
+  send('terminal_assign_master', { session_id: route.params.sessionId, participant_id: id })
+}
+
+function kickParticipant(id) {
+  send('terminal_kick_participant', { session_id: route.params.sessionId, participant_id: id })
 }
 
 function handleResize() {
@@ -426,6 +507,7 @@ onMounted(async () => {
   term.open(terminalContainer.value)
   fitAddon.fit()
   term.onData(data => {
+    if (!canInput.value) return
     send('terminal_input', {
       node_id: route.params.nodeId,
       session_id: route.params.sessionId,
@@ -435,6 +517,11 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
   await fetchSessionInfo()
+  try {
+    currentUserRole.value = (await getProfile()).data.role || ''
+  } catch {
+    currentUserRole.value = ''
+  }
   fetchScripts()
   connect()
 })
@@ -476,6 +563,18 @@ onUnmounted(() => {
 .connection-actions {
   gap: 8px;
   flex-shrink: 0;
+}
+.serial-params {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  margin-left: 8px;
+}
+.participants-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 .terminal-toolbar {
   justify-content: space-between;

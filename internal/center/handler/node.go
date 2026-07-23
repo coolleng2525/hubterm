@@ -85,6 +85,8 @@ func (h *NodeHandler) Get(c *gin.Context) {
 	// FIXED: check DB error
 	if err := h.DB.Where("node_id = ?", node.NodeID).Find(&ports).Error; err != nil {
 		nodeLog.Error("failed to list ports", log.Err(err), log.String("node_id", node.NodeID))
+	} else if err := applySerialPortConfigs(h.DB, ports); err != nil {
+		nodeLog.Error("failed to load port settings", log.Err(err), log.String("node_id", node.NodeID))
 	}
 
 	var sessions []model.Session
@@ -190,6 +192,13 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		log.String("ip", report.IP),
 	)
 
+	activeSerial := make(map[string]string)
+	for _, session := range report.Sessions {
+		if session.Protocol == "serial" && session.PortName != "" {
+			activeSerial[session.PortName] = session.SessionID
+		}
+	}
+
 	// upsert serial ports
 	for _, sp := range report.SerialPorts {
 		var port model.SerialPort
@@ -206,6 +215,11 @@ func (h *NodeHandler) Report(c *gin.Context) {
 		}
 		port.Description = sp.Description
 		port.Status = sp.Status
+		port.CurrentSessionID = ""
+		if sessionID := activeSerial[sp.PortName]; sessionID != "" {
+			port.Status = "busy"
+			port.CurrentSessionID = sessionID
+		}
 		port.BaudRate = sp.BaudRate
 		port.UpdatedAt = now
 		// FIXED: check Save error
@@ -250,6 +264,7 @@ func (h *NodeHandler) Report(c *gin.Context) {
 			SessionID:   s.SessionID,
 			NodeID:      report.NodeID,
 			DisplayName: displayName,
+			Protocol:    s.Protocol,
 			PortName:    s.PortName,
 			User:        s.User,
 			Type:        s.Type,

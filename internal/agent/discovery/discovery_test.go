@@ -1,6 +1,8 @@
 package discovery
 
 import (
+	"errors"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -78,7 +80,17 @@ func TestDiscoverFallbackEnv(t *testing.T) {
 	os.Setenv("HUBTERM_CENTER_URL", "http://fallback:8080")
 	defer os.Unsetenv("HUBTERM_CENTER_URL")
 
-	// Use a domain that will fail DNS lookup.
+	originalLookupSRV, originalLookupHost := lookupSRV, lookupHost
+	lookupSRV = func(string, string, string) (string, []*net.SRV, error) {
+		return "", nil, errors.New("test DNS failure")
+	}
+	lookupHost = func(string) ([]string, error) {
+		return nil, errors.New("test DNS failure")
+	}
+	defer func() {
+		lookupSRV, lookupHost = originalLookupSRV, originalLookupHost
+	}()
+
 	result, err := Discover("nonexistent-domain-xyz.invalid")
 	if err != nil {
 		t.Fatalf("Discover failed: %v", err)

@@ -63,6 +63,18 @@ export function getSerialPorts(nodeId) {
   return api.get('/serial-ports', { params })
 }
 
+export function updateSerialPortConfig(nodeId, portId, data) {
+  return api.put(`/nodes/${nodeId}/serial-ports/${portId}/config`, data)
+}
+
+export function connectSerialPort(nodeId, portId) {
+  return api.post(`/nodes/${nodeId}/serial-ports/${portId}/connect`, null, { timeout: 15000 })
+}
+
+export function disconnectSerialPort(nodeId, sessionId) {
+  return api.delete(`/nodes/${nodeId}/serial/${sessionId}`)
+}
+
 export function getSSHProfiles(nodeId) {
   return api.get('/ssh-profiles', { params: nodeId ? { node_id: nodeId } : {} })
 }

@@ -19,20 +19,21 @@ type CenterCommand struct {
 	ID      string `json:"id"`
 	Type    string `json:"type"` // exec / shell / ping / restart
 	Payload struct {
-		Command     string `json:"command,omitempty"`
-		Timeout     int    `json:"timeout,omitempty"` // 秒
-		SessionID   string `json:"session_id,omitempty"`
-		Data        string `json:"data,omitempty"`
-		Shell       string `json:"shell,omitempty"`
-		Rows        int    `json:"rows,omitempty"`
-		Cols        int    `json:"cols,omitempty"`
-		DisplayName string `json:"display_name,omitempty"`
-		Host        string `json:"host,omitempty"`
-		Port        int    `json:"port,omitempty"`
-		Username    string `json:"username,omitempty"`
-		Password    string `json:"password,omitempty"`
-		PrivateKey  string `json:"private_key,omitempty"`
-		Passphrase  string `json:"passphrase,omitempty"`
+		Command     string                     `json:"command,omitempty"`
+		Timeout     int                        `json:"timeout,omitempty"` // 秒
+		SessionID   string                     `json:"session_id,omitempty"`
+		Data        string                     `json:"data,omitempty"`
+		Shell       string                     `json:"shell,omitempty"`
+		Rows        int                        `json:"rows,omitempty"`
+		Cols        int                        `json:"cols,omitempty"`
+		DisplayName string                     `json:"display_name,omitempty"`
+		Host        string                     `json:"host,omitempty"`
+		Port        int                        `json:"port,omitempty"`
+		Username    string                     `json:"username,omitempty"`
+		Password    string                     `json:"password,omitempty"`
+		PrivateKey  string                     `json:"private_key,omitempty"`
+		Passphrase  string                     `json:"passphrase,omitempty"`
+		Serial      *hubtermproto.SerialConfig `json:"serial,omitempty"`
 	} `json:"payload,omitempty"`
 }
 
@@ -53,14 +54,15 @@ func (c *Connector) SetNodeToken(token string) {
 
 // Connector 维护与中心的 WebSocket 长连接
 type Connector struct {
-	CenterURL      string
-	NodeID         string
-	NodeToken      string
-	ws             *websocket.Conn
-	done           chan struct{}
-	mu             sync.Mutex
-	reconnect      bool
-	commandHandler func(cmd *CenterCommand)
+	CenterURL         string
+	NodeID            string
+	NodeToken         string
+	ws                *websocket.Conn
+	done              chan struct{}
+	mu                sync.Mutex
+	reconnect         bool
+	commandHandler    func(cmd *CenterCommand)
+	disconnectHandler func()
 }
 
 // New 创建新的 WebSocket 连接器
@@ -77,6 +79,14 @@ func New(centerURL, nodeID, nodeToken string) *Connector {
 // SetCommandHandler 注册命令处理器，收到中心指令时调用
 func (c *Connector) SetCommandHandler(handler func(cmd *CenterCommand)) {
 	c.commandHandler = handler
+}
+
+// SetDisconnectHandler registers cleanup that must run after an established
+// Center connection is lost.
+func (c *Connector) SetDisconnectHandler(handler func()) {
+	c.mu.Lock()
+	c.disconnectHandler = handler
+	c.mu.Unlock()
 }
 
 // Connect 建立 WebSocket 连接并持续重连
@@ -140,8 +150,12 @@ func (c *Connector) connectOnce() error {
 		if err != nil {
 			c.mu.Lock()
 			c.ws = nil
+			disconnected := c.disconnectHandler
 			c.mu.Unlock()
 			conn.Close()
+			if disconnected != nil {
+				disconnected()
+			}
 			return fmt.Errorf("read message: %w", err)
 		}
 
@@ -159,7 +173,7 @@ func (c *Connector) connectOnce() error {
 		switch msg.Type {
 		case "ping":
 			c.sendPong()
-		case "exec", "shell_start", "ssh_start", "write", "shell_close", "resize":
+		case "exec", "shell_start", "ssh_start", "serial_start", "write", "shell_close", "serial_close", "resize":
 			c.handleExecCommand(msg.Data)
 		default:
 			log.Printf("[connector] unknown message type: %s", msg.Type)
@@ -169,6 +183,10 @@ func (c *Connector) connectOnce() error {
 
 func (c *Connector) SendTerminalData(sessionID, direction, data string) error {
 	return c.writeJSON(hubtermproto.WSMessage{Type: "terminal_data", Data: hubtermproto.TerminalData{SessionID: sessionID, Direction: direction, Data: data}})
+}
+
+func (c *Connector) SendTerminalState(state hubtermproto.TerminalState) error {
+	return c.writeJSON(hubtermproto.WSMessage{Type: "terminal_state", Data: state})
 }
 
 // SendReport 发送节点上报数据到中心

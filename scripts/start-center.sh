@@ -134,7 +134,9 @@ stop_local_center() {
     [[ -n "$pid" && "$pid" != "$$" ]] && pids+=("$pid")
   done < <(pgrep -f "hubterm-center" || true)
 
-  wait_or_kill "HubTerm Center process" "${pids[@]}"
+  if [[ ${#pids[@]} -gt 0 ]]; then
+    wait_or_kill "HubTerm Center process" "${pids[@]}"
+  fi
 }
 
 docker_compose() {
@@ -185,16 +187,14 @@ start_local() {
     CGO_ENABLED=0 go build -o "$BIN" ./cmd/center
   fi
 
-  local args=()
-  if [[ -n "$CONFIG_FILE" ]]; then
-    args+=(--config "$CONFIG_FILE")
-  fi
-
   stop_local_center
   stop_docker_center false
 
   echo "🚀 Starting HubTerm Center locally on :${PORT}..."
-  exec "$BIN" "${args[@]}"
+  if [[ -n "$CONFIG_FILE" ]]; then
+    exec "$BIN" --config "$CONFIG_FILE"
+  fi
+  exec "$BIN"
 }
 
 start_docker() {

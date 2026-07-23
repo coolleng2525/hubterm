@@ -19,6 +19,7 @@ import (
 	"github.com/coolleng2525/hubterm/internal/agent/localshell"
 	"github.com/coolleng2525/hubterm/internal/agent/remotessh"
 	"github.com/coolleng2525/hubterm/internal/agent/reporter"
+	"github.com/coolleng2525/hubterm/internal/agent/serialsession"
 	"github.com/coolleng2525/hubterm/internal/agent/service"
 	"github.com/coolleng2525/hubterm/internal/pkg/session"
 	hubtermproto "github.com/coolleng2525/hubterm/internal/proto"
@@ -117,6 +118,7 @@ func main() {
 
 	shellManager := localshell.NewManager()
 	sshManager := remotessh.NewManager()
+	serialManager := serialsession.NewManager()
 
 	// 创建上报器
 	rep := reporter.NewReporter(centerAddr, cfg.NodeID, *nodeName)
@@ -124,9 +126,11 @@ func main() {
 	rep.SetSessionProvider(func() []hubtermproto.SessionInfo {
 		sessions := shellManager.List()
 		sessions = append(sessions, sshManager.List()...)
+		sessions = append(sessions, serialManager.List()...)
 		return sessions
 	})
 	conn := connector.New(centerAddr, cfg.NodeID, cfg.Token)
+	conn.SetDisconnectHandler(serialManager.CloseAll)
 	rep.SetTokenHandler(func(token string) {
 		cfg.Token = token
 		saveConfig(*dataDir, cfg)
@@ -197,16 +201,42 @@ func main() {
 				return
 			}
 			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
+		case "serial_start":
+			if cmd.Payload.Serial == nil {
+				_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, Stderr: "serial config is required", ExitCode: 1})
+				return
+			}
+			err := serialManager.Start(cmd.Payload.SessionID, *cmd.Payload.Serial, func(data []byte) {
+				_ = conn.SendTerminalData(cmd.Payload.SessionID, "output", base64.StdEncoding.EncodeToString(data))
+			}, func(err error) {
+				state := hubtermproto.TerminalState{SessionID: cmd.Payload.SessionID, Status: "closed"}
+				if err != nil {
+					state.Status = "error"
+					state.Error = err.Error()
+				}
+				_ = conn.SendTerminalState(state)
+			})
+			if err != nil {
+				_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, Stderr: err.Error(), ExitCode: 1})
+				return
+			}
+			_ = conn.SendTerminalState(hubtermproto.TerminalState{SessionID: cmd.Payload.SessionID, Status: "open"})
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 		case "write":
 			data, err := base64.StdEncoding.DecodeString(cmd.Payload.Data)
 			if err == nil {
-				if err := shellManager.Write(cmd.Payload.SessionID, data); err != nil {
-					_ = sshManager.Write(cmd.Payload.SessionID, data)
+				if err := serialManager.Write(cmd.Payload.SessionID, data); err != nil {
+					if err := shellManager.Write(cmd.Payload.SessionID, data); err != nil {
+						_ = sshManager.Write(cmd.Payload.SessionID, data)
+					}
 				}
 			}
 		case "shell_close":
 			shellManager.Close(cmd.Payload.SessionID)
 			sshManager.Close(cmd.Payload.SessionID)
+		case "serial_close":
+			_ = serialManager.Close(cmd.Payload.SessionID)
+			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 		case "resize":
 			_ = sshManager.Resize(cmd.Payload.SessionID, cmd.Payload.Rows, cmd.Payload.Cols)
 		case "exec":
@@ -246,6 +276,7 @@ func main() {
 			session.GlobalSessionManager.Remove(cmd.Payload.SessionID)
 			shellManager.Close(cmd.Payload.SessionID)
 			sshManager.Close(cmd.Payload.SessionID)
+			_ = serialManager.Close(cmd.Payload.SessionID)
 			_ = conn.SendResult(cmd.ID, &hubtermproto.ExecResult{CmdID: cmd.ID, ExitCode: 0})
 
 		case "assign_master":
@@ -270,5 +301,6 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigCh
 	fmt.Printf("\nReceived signal %v, shutting down...\n", sig)
+	serialManager.CloseAll()
 	conn.Close()
 }

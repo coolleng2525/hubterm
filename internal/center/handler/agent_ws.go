@@ -91,10 +91,15 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		h.mu.Lock()
+		removed := false
 		if h.agentConns[nodeID] == ac {
 			delete(h.agentConns, nodeID)
+			removed = true
 		}
 		h.mu.Unlock()
+		if removed {
+			h.failPendingForNode(nodeID, "agent disconnected")
+		}
 		conn.Close()
 		agentWSLog.Info("agent ws disconnected", log.String("node_id", nodeID))
 	}()
@@ -161,10 +166,45 @@ func (h *AgentWSHandler) HandleAgentWS(w http.ResponseWriter, r *http.Request) {
 					log.String("direction", terminalData.Direction),
 				)
 			}
+		case "terminal_state":
+			h.handleTerminalState(nodeID, msg.Data)
 		default:
 			agentWSLog.Debug("unknown agent message", log.String("type", msg.Type))
 		}
 	}
+}
+
+func (h *AgentWSHandler) handleTerminalState(nodeID string, data interface{}) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	var state hubtermproto.TerminalState
+	if json.Unmarshal(raw, &state) != nil || state.SessionID == "" {
+		return
+	}
+	if state.Status != "open" && state.Status != "closed" && state.Status != "error" {
+		return
+	}
+	if !h.ownsSession(nodeID, state.SessionID) {
+		return
+	}
+	BroadcastTerminalState(nodeID, state)
+	if state.Status == "open" || h.DB == nil {
+		return
+	}
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("node_id = ? AND session_id = ?", nodeID, state.SessionID).Delete(&model.Session{}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&model.SerialPort{}).
+			Where("node_id = ? AND current_session_id = ?", nodeID, state.SessionID).
+			Updates(map[string]interface{}{"status": "online", "current_session_id": ""}).Error
+	}); err != nil {
+		agentWSLog.Error("failed to clean terminal state", log.String("session_id", state.SessionID), log.Err(err))
+		return
+	}
+	h.UnregisterTerminalSession(state.SessionID)
 }
 
 func (h *AgentWSHandler) appendTerminalData(data hubtermproto.TerminalData) {
@@ -395,7 +435,7 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 		}
 		attrs := map[string]interface{}{
 			"node_id": nodeID, "port_name": incoming.PortName, "user": incoming.User,
-			"type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
+			"protocol": incoming.Protocol, "type": incoming.Type, "client_ip": incoming.ClientIP, "connected_at": connectedAt,
 		}
 		if displayName != "" && (result.Error == gorm.ErrRecordNotFound || strings.TrimSpace(session.DisplayName) == "") {
 			attrs["display_name"] = displayName
@@ -405,6 +445,7 @@ func (h *AgentWSHandler) handleReport(nodeID string, data interface{}) {
 				SessionID:   incoming.SessionID,
 				NodeID:      nodeID,
 				DisplayName: displayName,
+				Protocol:    incoming.Protocol,
 				PortName:    incoming.PortName,
 				User:        incoming.User,
 				Type:        incoming.Type,
@@ -462,6 +503,19 @@ func (h *AgentWSHandler) ownsSession(nodeID, sessionID string) bool {
 	return h.DB.Model(&model.Session{}).
 		Where("node_id = ? AND session_id = ?", nodeID, sessionID).
 		Count(&count).Error == nil && count == 1
+}
+
+func (h *AgentWSHandler) RegisterTerminalSession(nodeID, sessionID string) {
+	h.mu.Lock()
+	h.localSessions[sessionID] = nodeID
+	h.mu.Unlock()
+}
+
+func (h *AgentWSHandler) UnregisterTerminalSession(sessionID string) {
+	h.mu.Lock()
+	delete(h.localSessions, sessionID)
+	delete(h.terminalBuffers, sessionID)
+	h.mu.Unlock()
 }
 
 func (h *AgentWSHandler) StartLocalShell(nodeID, shellID, sessionID string, rows, cols int) error {
@@ -541,10 +595,11 @@ func (h *AgentWSHandler) SendExecCommand(nodeID, command string, timeout int) (s
 	cmd := hubtermproto.ExecCommand{ID: cmdID, Type: "exec"}
 	cmd.Payload.Command = command
 	cmd.Payload.Timeout = timeout
+	StoreExecResult(&execResultEntry{CmdID: cmdID, NodeID: nodeID, Status: "pending", CreatedAt: time.Now()})
 	if err := h.sendCommand(nodeID, cmd); err != nil {
+		deleteExecResult(cmdID)
 		return "", err
 	}
-	StoreExecResult(&execResultEntry{CmdID: cmdID, NodeID: nodeID, Status: "pending", CreatedAt: time.Now()})
 	return cmdID, nil
 }
 
@@ -552,11 +607,55 @@ func (h *AgentWSHandler) SendControlCommand(nodeID, commandType, sessionID strin
 	cmdID := uuid.New().String()
 	cmd := hubtermproto.ExecCommand{ID: cmdID, Type: commandType}
 	cmd.Payload.SessionID = sessionID
+	StoreExecResult(&execResultEntry{CmdID: cmdID, NodeID: nodeID, Status: "pending", CreatedAt: time.Now()})
 	if err := h.sendCommand(nodeID, cmd); err != nil {
+		deleteExecResult(cmdID)
 		return "", err
 	}
-	StoreExecResult(&execResultEntry{CmdID: cmdID, NodeID: nodeID, Status: "pending", CreatedAt: time.Now()})
 	return cmdID, nil
+}
+
+// SendCommandAndWait sends a command and waits for the matching Agent result.
+// It is used for operations, such as opening a serial port, where the HTTP API
+// must not report success before the Agent confirms the side effect.
+func (h *AgentWSHandler) SendCommandAndWait(nodeID string, cmd hubtermproto.ExecCommand, timeout time.Duration) (*hubtermproto.ExecResult, error) {
+	if cmd.ID == "" {
+		cmd.ID = uuid.New().String()
+	}
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	done := make(chan struct{})
+	entry := &execResultEntry{
+		CmdID: cmd.ID, NodeID: nodeID, Status: "pending", CreatedAt: time.Now(), Done: done,
+	}
+	StoreExecResult(entry)
+	defer deleteExecResult(cmd.ID)
+	if err := h.sendCommand(nodeID, cmd); err != nil {
+		return nil, err
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-done:
+		if entry.Error != "" {
+			return nil, fmt.Errorf("%s", entry.Error)
+		}
+		if entry.Result == nil {
+			return nil, fmt.Errorf("agent returned no result")
+		}
+		if entry.Result.ExitCode != 0 {
+			message := strings.TrimSpace(entry.Result.Stderr)
+			if message == "" {
+				message = "agent command failed"
+			}
+			return entry.Result, fmt.Errorf("%s", message)
+		}
+		return entry.Result, nil
+	case <-timer.C:
+		return nil, fmt.Errorf("agent command timed out")
+	}
 }
 
 func (h *AgentWSHandler) sendCommand(nodeID string, cmd hubtermproto.ExecCommand) error {
@@ -635,6 +734,8 @@ type execResultEntry struct {
 	Status    string // pending / running / completed / failed
 	Result    *hubtermproto.ExecResult
 	CreatedAt time.Time
+	Done      chan struct{}
+	Error     string
 }
 
 var (
@@ -655,7 +756,18 @@ func GetExecResult(cmdID string) *execResultEntry {
 	execResultsMu.Lock()
 	defer execResultsMu.Unlock()
 	cleanupExecResultsLocked(time.Now())
-	return execResults[cmdID]
+	entry := execResults[cmdID]
+	if entry == nil {
+		return nil
+	}
+	copy := *entry
+	return &copy
+}
+
+func deleteExecResult(cmdID string) {
+	execResultsMu.Lock()
+	delete(execResults, cmdID)
+	execResultsMu.Unlock()
 }
 
 func cleanupExecResultsLocked(now time.Time) {
@@ -673,23 +785,38 @@ func (h *AgentWSHandler) AgentExecResultHandler(nodeID string, data json.RawMess
 		agentWSLog.Error("failed to parse exec result", log.Err(err))
 		return
 	}
-	pending := GetExecResult(result.CmdID)
+	execResultsMu.Lock()
+	pending := execResults[result.CmdID]
 	if pending == nil || pending.NodeID != nodeID {
+		execResultsMu.Unlock()
 		agentWSLog.Warn("rejected unmatched exec result", log.String("cmd_id", result.CmdID), log.String("node_id", nodeID))
 		return
 	}
-
-	entry := &execResultEntry{
-		CmdID:     result.CmdID,
-		NodeID:    nodeID,
-		Status:    "completed",
-		Result:    &result,
-		CreatedAt: time.Now(),
+	pending.Status = "completed"
+	pending.Result = &result
+	pending.CreatedAt = time.Now()
+	if pending.Done != nil {
+		close(pending.Done)
+		pending.Done = nil
 	}
-	StoreExecResult(entry)
+	execResultsMu.Unlock()
 
 	agentWSLog.Info("exec result stored",
 		log.String("cmd_id", result.CmdID),
 		log.Int("exit_code", result.ExitCode),
 	)
+}
+
+func (h *AgentWSHandler) failPendingForNode(nodeID, reason string) {
+	execResultsMu.Lock()
+	defer execResultsMu.Unlock()
+	for _, entry := range execResults {
+		if entry.NodeID != nodeID || entry.Status != "pending" || entry.Done == nil {
+			continue
+		}
+		entry.Status = "failed"
+		entry.Error = reason
+		close(entry.Done)
+		entry.Done = nil
+	}
 }

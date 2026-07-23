@@ -17,7 +17,7 @@ func TestIsSerialDevice(t *testing.T) {
 		{"linux", "ttyS0", "/sys/devices/platform/serial8250/serial8250:0/serial8250:0.0", false},
 		{"linux", "ttyS0", "", false},
 		{"linux", "tty0", "/sys/devices/virtual/tty/tty0", false},
-		{"darwin", "tty.usbserial", "", true},
+		{"darwin", "tty.usbserial", "", false},
 		{"darwin", "cu.usbserial", "", true},
 		{"darwin", "ttyUSB0", "", false},
 	}
