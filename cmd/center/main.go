@@ -85,9 +85,9 @@ func main() {
 
 	// handlers
 	authH := &handler.AuthHandler{DB: model.GetDB()}
-	portH := &handler.SerialPortHandler{DB: model.GetDB()}
 	auditH := &handler.AuditLogHandler{DB: model.GetDB()}
 	agentWSH := handler.NewAgentWSHandler(model.GetDB())
+	portH := handler.NewSerialPortHandler(model.GetDB(), agentWSH)
 	terminalH := &handler.TerminalHandler{RecordingDir: "recordings", DB: model.GetDB()}
 	sshProfileH := &handler.SSHProfileHandler{DB: model.GetDB()}
 	nodeH := &handler.NodeHandler{DB: model.GetDB(), AgentWS: agentWSH}
@@ -149,6 +149,9 @@ func main() {
 		api.DELETE("/nodes/:id", middleware.AdminRequired(), nodeH.Delete)
 
 		api.GET("/serial-ports", portH.List)
+		api.PUT("/nodes/:id/serial-ports/:port_id/config", middleware.OperatorRequired(), portH.UpdateConfig)
+		api.POST("/nodes/:id/serial-ports/:port_id/connect", middleware.OperatorRequired(), portH.Connect)
+		api.DELETE("/nodes/:id/serial/:session_id", middleware.OperatorRequired(), portH.Disconnect)
 		api.GET("/ssh-profiles", sshProfileH.List)
 		api.POST("/ssh-profiles", middleware.OperatorRequired(), sshProfileH.Create)
 		api.PUT("/ssh-profiles/:id", middleware.OperatorRequired(), sshProfileH.Update)

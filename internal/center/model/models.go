@@ -79,12 +79,33 @@ type SerialPort struct {
 	ID               uint      `gorm:"primaryKey" json:"id"`
 	NodeID           string    `gorm:"index;size:64;not null" json:"node_id"`
 	PortName         string    `gorm:"size:64;not null" json:"port_name"`
+	Alias            string    `gorm:"-" json:"alias"`
 	Description      string    `gorm:"size:256" json:"description"`
 	Status           string    `gorm:"size:32;not null;default:offline" json:"status"` // online/offline/busy
 	BaudRate         int       `json:"baud_rate"`
+	DataBits         int       `gorm:"-" json:"data_bits"`
+	Parity           string    `gorm:"-" json:"parity"`
+	StopBits         int       `gorm:"-" json:"stop_bits"`
+	FlowControl      string    `gorm:"-" json:"flow_control"`
 	CurrentSessionID string    `gorm:"size:64" json:"current_session_id"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// SerialPortConfig stores operator-managed settings independently from discovery.
+// Discovery rows may disappear when hardware is unplugged; these settings persist.
+type SerialPortConfig struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	NodeID      string    `gorm:"size:64;not null;uniqueIndex:idx_serial_port_config" json:"node_id"`
+	PortName    string    `gorm:"size:256;not null;uniqueIndex:idx_serial_port_config" json:"port_name"`
+	Alias       string    `gorm:"size:128;not null;default:''" json:"alias"`
+	BaudRate    int       `gorm:"not null;default:115200" json:"baud_rate"`
+	DataBits    int       `gorm:"not null;default:8" json:"data_bits"`
+	Parity      string    `gorm:"size:16;not null;default:none" json:"parity"`
+	StopBits    int       `gorm:"not null;default:1" json:"stop_bits"`
+	FlowControl string    `gorm:"size:16;not null;default:none" json:"flow_control"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // SessionDisplayName stores operator-defined session labels by stable session identity.
@@ -104,6 +125,7 @@ type Session struct {
 	SessionID   string    `gorm:"uniqueIndex;size:64;not null" json:"session_id"`
 	NodeID      string    `gorm:"index;size:64;not null" json:"node_id"`
 	DisplayName string    `gorm:"size:128" json:"display_name"`
+	Protocol    string    `gorm:"size:32" json:"protocol"`
 	PortName    string    `gorm:"size:64;not null" json:"port_name"`
 	User        string    `gorm:"size:64" json:"user"`
 	Type        string    `gorm:"size:32;not null;default:watcher" json:"type"` // master/watcher
@@ -176,7 +198,7 @@ type BatchResult struct {
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&User{}, &SSHProfile{}, &MCPToken{}, &Node{}, &SerialPort{}, &Session{}, &SessionDisplayName{}, &AuditLog{},
+		&User{}, &SSHProfile{}, &MCPToken{}, &Node{}, &SerialPort{}, &SerialPortConfig{}, &Session{}, &SessionDisplayName{}, &AuditLog{},
 		&Script{}, &ScriptResult{}, &Device{},
 		&DeviceAlias{}, &RemoteCenter{}, &DeviceGroup{}, &DeviceGroupMember{}, &BatchResult{},
 	)

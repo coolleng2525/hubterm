@@ -16,6 +16,11 @@ import (
 	"time"
 )
 
+var (
+	lookupSRV  = net.LookupSRV
+	lookupHost = net.LookupHost
+)
+
 // DiscoveryResult holds the result of a center service discovery.
 type DiscoveryResult struct {
 	// CenterURL is the discovered WebSocket URL of the center service.
@@ -118,7 +123,7 @@ func DiscoverWithConfig(centerURL string) (*DiscoveryResult, error) {
 // Returns an HTTP URL (e.g. http://center.mycompany.com:8080) that the
 // connector will convert to a WebSocket URL internally.
 func discoverSRV(domain string) (*DiscoveryResult, error) {
-	_, srvs, err := net.LookupSRV("hubterm", "tcp", domain)
+	_, srvs, err := lookupSRV("hubterm", "tcp", domain)
 	if err != nil {
 		return nil, fmt.Errorf("SRV lookup _hubterm._tcp.%s: %w", domain, err)
 	}
@@ -139,7 +144,7 @@ func discoverSRV(domain string) (*DiscoveryResult, error) {
 // Defaults to port 8080.
 func discoverA(domain string) (*DiscoveryResult, error) {
 	host := fmt.Sprintf("hubterm.%s", domain)
-	addrs, err := net.LookupHost(host)
+	addrs, err := lookupHost(host)
 	if err != nil {
 		return nil, fmt.Errorf("A lookup %s: %w", host, err)
 	}
@@ -157,7 +162,7 @@ func discoverA(domain string) (*DiscoveryResult, error) {
 // discoverMDNS looks up hubterm.local via mDNS.
 func discoverMDNS() (*DiscoveryResult, error) {
 	host := "hubterm.local"
-	addrs, err := net.LookupHost(host)
+	addrs, err := lookupHost(host)
 	if err != nil {
 		return nil, fmt.Errorf("mDNS lookup %s: %w", host, err)
 	}

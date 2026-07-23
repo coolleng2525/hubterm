@@ -58,7 +58,10 @@ func isSerialDevice(goos, name, devicePath string) bool {
 		// those generic placeholders.
 		return !strings.Contains(devicePath, "/devices/platform/serial8250/serial8250:0/")
 	case "darwin":
-		return strings.HasPrefix(name, "tty.") || strings.HasPrefix(name, "cu.")
+		// macOS exposes the same hardware as both tty.* (dial-in) and cu.*
+		// (call-out). Interactive clients should use cu.*; reporting both creates
+		// duplicate rows and can let users try to open one device twice.
+		return strings.HasPrefix(name, "cu.")
 	default:
 		return false
 	}
