@@ -86,6 +86,16 @@
         <el-button size="small" @click="selectAllTerminal">全选</el-button>
         <el-button size="small" @click="copyTerminalContent">复制全部</el-button>
         <el-button size="small" @click="exportTerminalContent">导出</el-button>
+        <a
+          class="terminal-save-link"
+          :href="terminalExportUrl || '#'"
+          :download="terminalExportFilename"
+          title="右键选择链接另存为"
+          @mouseenter="refreshTerminalExportLink"
+          @focus="refreshTerminalExportLink"
+          @contextmenu="refreshTerminalExportLink"
+          @click="refreshTerminalExportLink"
+        >另存为链接</a>
         <span class="config-label">保留行数</span>
         <el-select
           v-model="scrollback"
@@ -153,6 +163,8 @@ const participantRole = ref('observer')
 const participants = ref([])
 const currentUserRole = ref('')
 const canInput = computed(() => connected.value && participantRole.value === 'master')
+const terminalExportUrl = ref('')
+const terminalExportFilename = ref('terminal.txt')
 
 // Quick Send state
 const selectedScriptId = ref('')
@@ -531,24 +543,85 @@ function fallbackCopyText(text) {
   if (!ok) throw new Error('copy failed')
 }
 
-function exportTerminalContent() {
-  const content = getTerminalContent()
-  if (!content) {
+async function exportTerminalContent() {
+  const payload = createTerminalExportPayload()
+  if (!payload) {
     ElMessage.warning('终端内容为空')
     return
   }
-  const name = sanitizeFilename(sessionDisplayName.value || sessionPortName.value || route.params.sessionId)
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const blob = new Blob([content + '\n'], { type: 'text/plain;charset=utf-8' })
+  const { blob, filename } = payload
+
+  if (window.isSecureContext && window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: 'Text file',
+            accept: { 'text/plain': ['.txt'] },
+          },
+        ],
+      })
+      const writable = await handle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      ElMessage.success('终端内容已导出')
+      return
+    } catch (error) {
+      if (error?.name === 'AbortError') return
+      console.error('Failed to save terminal content with picker:', error)
+      ElMessage.warning('保存位置选择失败，已改为普通下载')
+    }
+  } else {
+    ElMessage.warning('当前浏览器或 HTTP 地址不支持选择保存位置，已改为普通下载')
+  }
+
+  downloadTerminalContent(blob, filename)
+  ElMessage.success('终端内容已导出')
+}
+
+function downloadTerminalContent(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `hubterm-${name}-${timestamp}.txt`
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  ElMessage.success('终端内容已导出')
+}
+
+function createTerminalExportPayload() {
+  const content = getTerminalContent()
+  if (!content) return null
+  const name = sanitizeFilename(sessionDisplayName.value || sessionPortName.value || route.params.sessionId)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const filename = `hubterm-${name}-${timestamp}.txt`
+  const blob = new Blob([content + '\n'], { type: 'text/plain;charset=utf-8' })
+  return { blob, filename }
+}
+
+function refreshTerminalExportLink(event) {
+  const payload = createTerminalExportPayload()
+  if (!payload) {
+    terminalExportUrl.value = ''
+    terminalExportFilename.value = 'terminal.txt'
+    if (event?.type === 'click') {
+      event.preventDefault()
+      ElMessage.warning('终端内容为空')
+    }
+    return
+  }
+  revokeTerminalExportUrl()
+  terminalExportUrl.value = URL.createObjectURL(payload.blob)
+  terminalExportFilename.value = payload.filename
+}
+
+function revokeTerminalExportUrl() {
+  if (terminalExportUrl.value) {
+    URL.revokeObjectURL(terminalExportUrl.value)
+    terminalExportUrl.value = ''
+  }
 }
 
 function sanitizeFilename(value) {
@@ -608,6 +681,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
   disconnect()
+  revokeTerminalExportUrl()
   term?.dispose()
 })
 </script>
@@ -682,6 +756,25 @@ onUnmounted(() => {
 }
 .scrollback-select {
   width: 112px;
+}
+.terminal-save-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 11px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  color: var(--el-text-color-regular);
+  background: var(--el-fill-color-blank);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+}
+.terminal-save-link:hover {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-7);
+  background: var(--el-color-primary-light-9);
 }
 .terminal-container {
   width: 100%;

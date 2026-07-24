@@ -20,6 +20,24 @@ yaml_value() {
   grep -E "^[[:space:]]*${key}:" "$file" | head -1 | sed -E 's/^[^:]*:[[:space:]]*"?([^"]*)"?.*/\1/'
 }
 
+yaml_section_value() {
+  local section="$1" key="$2" file="$3"
+  awk -v section="$section" -v key="$key" '
+    $0 ~ "^[[:space:]]*" section ":" { in_section=1; next }
+    in_section && $0 ~ "^[^[:space:]]" { exit }
+    in_section {
+      line=$0
+      sub(/^[[:space:]]+/, "", line)
+      if (line ~ "^" key ":") {
+        sub(/^[^:]*:[[:space:]]*/, "", line)
+        gsub(/^"|"$/, "", line)
+        print line
+        exit
+      }
+    }
+  ' "$file"
+}
+
 load_env() {
   if [[ -f .env ]]; then
     set -a
@@ -38,12 +56,29 @@ load_env() {
       export ADMIN_PASSWORD
     fi
     if [[ -z "${PORT:-}" ]]; then
-      PORT="$(yaml_value port config.yaml)"
+      PORT="$(yaml_section_value server port config.yaml)"
+      PORT="${PORT:-$(yaml_value port config.yaml)}"
+    fi
+    if [[ -z "${HTTPS_PORT:-}" ]]; then
+      HTTPS_PORT="$(yaml_section_value https port config.yaml)"
+    fi
+    if [[ -z "${NGINX_SERVER_NAME:-}" ]]; then
+      NGINX_SERVER_NAME="$(yaml_section_value https server_name config.yaml)"
+    fi
+    if [[ -z "${NGINX_CERT_DNS:-}" ]]; then
+      NGINX_CERT_DNS="$(yaml_section_value https cert_dns config.yaml)"
+    fi
+    if [[ -z "${NGINX_CERT_IP:-}" ]]; then
+      NGINX_CERT_IP="$(yaml_section_value https cert_ip config.yaml)"
     fi
   fi
 
   PORT="${PORT:-8080}"
-  export PORT
+  HTTPS_PORT="${HTTPS_PORT:-8087}"
+  NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-localhost}"
+  NGINX_CERT_DNS="${NGINX_CERT_DNS:-localhost}"
+  NGINX_CERT_IP="${NGINX_CERT_IP:-127.0.0.1}"
+  export PORT HTTPS_PORT NGINX_SERVER_NAME NGINX_CERT_DNS NGINX_CERT_IP
 }
 
 require_env() {
@@ -59,6 +94,10 @@ require_env() {
 
   if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
     echo "错误: 无效的 PORT: $PORT" >&2
+    exit 1
+  fi
+  if ! [[ "$HTTPS_PORT" =~ ^[0-9]+$ ]]; then
+    echo "错误: 无效的 HTTPS_PORT: $HTTPS_PORT" >&2
     exit 1
   fi
 }
@@ -87,6 +126,7 @@ case "$cmd" in
     docker_compose up -d --build
     echo ""
     echo "✅ HubTerm 已启动: http://localhost:${PORT}"
+    echo "🔐 HTTPS 代理: https://${NGINX_SERVER_NAME}:${HTTPS_PORT}"
     docker_compose ps
     ;;
   stop|down)
@@ -98,6 +138,7 @@ case "$cmd" in
     docker_compose down
     docker_compose up -d --build
     echo "✅ HubTerm 已重启: http://localhost:${PORT}"
+    echo "🔐 HTTPS 代理: https://${NGINX_SERVER_NAME}:${HTTPS_PORT}"
     ;;
   logs)
     docker_compose logs -f --tail=100

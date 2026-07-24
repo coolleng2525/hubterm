@@ -15,3 +15,10 @@ log:
 
 presets:
   dir: presets
+
+https:
+  enabled: true
+  port: 8087
+  server_name: "3.3.3.3"
+  cert_dns: "localhost"
+  cert_ip: "3.3.3.3"
