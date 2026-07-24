@@ -70,7 +70,7 @@
         </el-button>
         <el-input
           v-model="customSendText"
-		  :disabled="!canInput"
+          :disabled="!canInput"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 4 }"
           size="small"
@@ -83,6 +83,9 @@
 
 
       <div class="terminal-config">
+        <el-button size="small" @click="selectAllTerminal">全选</el-button>
+        <el-button size="small" @click="copyTerminalContent">复制全部</el-button>
+        <el-button size="small" @click="exportTerminalContent">导出</el-button>
         <span class="config-label">保留行数</span>
         <el-select
           v-model="scrollback"
@@ -479,6 +482,81 @@ function clearSearch() {
   searchQuery.value = ''
   term?.clearSelection()
   term?.focus()
+}
+
+function getTerminalContent() {
+  if (!term) return ''
+  const buffer = term.buffer.active
+  const lines = []
+  for (let i = 0; i < buffer.length; i++) {
+    lines.push(buffer.getLine(i)?.translateToString(true) || '')
+  }
+  return lines.join('\n').replace(/\s+$/, '')
+}
+
+function selectAllTerminal() {
+  term?.selectAll()
+  term?.focus()
+}
+
+async function copyTerminalContent() {
+  const content = getTerminalContent()
+  if (!content) {
+    ElMessage.warning('终端内容为空')
+    return
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(content)
+    } else {
+      fallbackCopyText(content)
+    }
+    ElMessage.success('终端内容已复制')
+  } catch (error) {
+    console.error('Failed to copy terminal content:', error)
+    ElMessage.error('复制失败')
+  }
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!ok) throw new Error('copy failed')
+}
+
+function exportTerminalContent() {
+  const content = getTerminalContent()
+  if (!content) {
+    ElMessage.warning('终端内容为空')
+    return
+  }
+  const name = sanitizeFilename(sessionDisplayName.value || sessionPortName.value || route.params.sessionId)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const blob = new Blob([content + '\n'], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `hubterm-${name}-${timestamp}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('终端内容已导出')
+}
+
+function sanitizeFilename(value) {
+  return String(value || 'terminal')
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'terminal'
 }
 
 function handleKeydown(event) {
